@@ -23,7 +23,7 @@
 			<a href="/" class="site-header__title">{siteConfig.name}</a>
 			<nav class="site-header__nav" aria-label="Site navigation">
 				<a href="/">Articles</a>
-				<!-- Add links to your static pages here, e.g.: <a href="/about">About</a> -->
+				<a href="/about">About</a>
 			</nav>
 		</div>
 	</header>
