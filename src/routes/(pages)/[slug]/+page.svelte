@@ -3,19 +3,18 @@
 	import type { PageData } from './$types';
 
 	const { data }: { data: PageData } = $props();
-	const { page } = data;
 </script>
 
 <svelte:head>
-	<title>{page.title} — {siteConfig.name}</title>
-	<meta property="og:title" content="{page.title} — {siteConfig.name}" />
+	<title>{data.page.title} — {siteConfig.name}</title>
+	<meta property="og:title" content="{data.page.title} — {siteConfig.name}" />
 </svelte:head>
 
 <article class="page">
 	<div class="container">
-		<h1 class="page__title">{page.title}</h1>
+		<h1 class="page__title">{data.page.title}</h1>
 		<div class="page__body prose">
-			{@html page.html}
+			{@html data.page.html}
 		</div>
 	</div>
 </article>

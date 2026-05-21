@@ -6,21 +6,22 @@
 	import type { Component } from 'svelte';
 
 	const { data }: { data: PageData } = $props();
-	const { article, related } = data;
 
 	// Eagerly import all .svx modules so we can pick the right component by slug
 	const svxModules = import.meta.glob('/src/content/articles/*.svx', {
 		eager: true
 	}) as Record<string, { default: Component }>;
 
-	const SvxComponent = svxModules[`/src/content/articles/${article.slug}.svx`]?.default;
+	const SvxComponent = $derived(
+		svxModules[`/src/content/articles/${data.article.slug}.svx`]?.default
+	);
 </script>
 
 <svelte:head>
-	<title>{article.title} — {siteConfig.name}</title>
-	<meta name="description" content={article.excerpt} />
-	<meta property="og:title" content={article.title} />
-	<meta property="og:description" content={article.excerpt} />
+	<title>{data.article.title} — {siteConfig.name}</title>
+	<meta name="description" content={data.article.excerpt} />
+	<meta property="og:title" content={data.article.title} />
+	<meta property="og:description" content={data.article.excerpt} />
 	<meta property="og:type" content="article" />
 </svelte:head>
 
@@ -28,36 +29,33 @@
 	<div class="container">
 		<header class="article__header">
 			<div class="article__meta">
-				<a
-					href="/categories/{article.category}"
-					class="article__category"
-				>
-					{getCategoryLabel(article.category)}
+				<a href="/categories/{data.article.category}" class="article__category">
+					{getCategoryLabel(data.article.category)}
 				</a>
-				{#if article.date}
-					<time class="article__date" datetime={article.date}>{article.date}</time>
+				{#if data.article.date}
+					<time class="article__date" datetime={data.article.date}>{data.article.date}</time>
 				{/if}
 			</div>
-			<h1 class="article__title">{article.title}</h1>
-			<p class="article__excerpt">{article.excerpt}</p>
+			<h1 class="article__title">{data.article.title}</h1>
+			<p class="article__excerpt">{data.article.excerpt}</p>
 		</header>
 
 		<div class="article__body prose">
 			{#if SvxComponent}
 				<SvxComponent />
 			{:else}
-				{@html article.html}
+				{@html data.article.html}
 			{/if}
 		</div>
 
 		<footer class="article__footer">
 			<a href="/" class="article__back">&#8592; Back to articles</a>
 
-			{#if related.length > 0}
+			{#if data.related.length > 0}
 				<section class="related">
 					<h2 class="related__heading">More in this category</h2>
 					<ul class="related__list">
-						{#each related as rel}
+						{#each data.related as rel}
 							<li>
 								<a href="/articles/{rel.slug}" class="related__link">
 									<span class="related__title">{rel.title}</span>

@@ -4,33 +4,32 @@
 	import type { PageData } from './$types';
 
 	const { data }: { data: PageData } = $props();
-	const { slug, label, description, articles } = data;
 </script>
 
 <svelte:head>
-	<title>{label} — {siteConfig.name}</title>
-	<meta name="description" content={description || `Articles in the ${label} category.`} />
-	<meta property="og:title" content="{label} — {siteConfig.name}" />
+	<title>{data.label} — {siteConfig.name}</title>
+	<meta name="description" content={data.description || `Articles in the ${data.label} category.`} />
+	<meta property="og:title" content="{data.label} — {siteConfig.name}" />
 </svelte:head>
 
 <section class="category-page">
 	<div class="container">
 		<header class="category-page__header">
-			<h1 class="category-page__title">{label}</h1>
-			{#if description}
-				<p class="category-page__description">{description}</p>
+			<h1 class="category-page__title">{data.label}</h1>
+			{#if data.description}
+				<p class="category-page__description">{data.description}</p>
 			{/if}
 		</header>
 
 		<div class="category-page__nav">
-			<CategoryNav currentSlug={slug} />
+			<CategoryNav currentSlug={data.slug} />
 		</div>
 
-		{#if articles.length === 0}
+		{#if data.articles.length === 0}
 			<p class="category-page__empty">No articles in this category yet.</p>
 		{:else}
 			<ul class="article-list">
-				{#each articles as article}
+				{#each data.articles as article}
 					<li class="article-card">
 						<a href="/articles/{article.slug}" class="article-card__link">
 							<div class="article-card__meta">

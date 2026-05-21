@@ -12,7 +12,11 @@ const config = {
 		})
 	],
 	kit: {
-		adapter: adapter()
+		adapter: adapter(),
+		prerender: {
+			// Dynamic routes with no entries (no content yet) should warn, not error.
+			handleUnseenRoutes: 'warn'
+		}
 	}
 };
 
