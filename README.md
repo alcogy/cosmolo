@@ -182,15 +182,50 @@ title: "About"
 
 ---
 
+## OGP Images
+
+Cosmolo supports two OGP image modes, controlled by `ogImage.mode` in `config/site.json`.
+
+### `"static"` (default)
+
+All pages share a single `/og-image.png`. Place your image at `static/og-image.png`
+(1200×630px recommended) and you're done. No build-time overhead.
+
+```json
+"ogImage": { "mode": "static" }
+```
+
+### `"generated"`
+
+A unique 1200×630 PNG is generated for each article at build time using
+[Satori](https://github.com/vercel/satori). The images are output to `build/og/[slug].png`
+and referenced automatically in each article's `og:image` meta tag.
+
+```json
+"ogImage": { "mode": "generated" }
+```
+
+The card design shows the article title, category, and site name. To customize the layout,
+edit `src/lib/og.ts`.
+
+**Previewing locally:**
+
+```bash
+bun dev
+# then open: http://localhost:5173/og/your-article-slug.png
+```
+
+---
+
 ## Static Assets
 
 Replace the placeholder assets in `static/` before deploying:
 
-| File                  | Purpose                             |
-|-----------------------|-------------------------------------|
-| `static/favicon.svg`  | Browser tab icon (included)         |
-| `static/og-image.png` | Default Open Graph image (1200×630) |
-| `static/robots.txt`   | Already included                    |
+| File                  | Purpose                                         |
+|-----------------------|-------------------------------------------------|
+| `static/favicon.svg`  | Browser tab icon (included)                     |
+| `static/og-image.png` | Default OGP image used when mode is `"static"`  |
+| `static/robots.txt`   | Already included                                |
 
 ---
 
@@ -213,6 +248,7 @@ src/
     categories.ts      ← Category lookup helpers
     articles.ts        ← Zod schema, article parsing and listing
     markdown.ts        ← marked configuration (YouTube embed, external links)
+    og.ts              ← OGP image generation (Satori + resvg-js)
     pages.ts           ← Static page parsing
     components/
       Callout.svelte   ← Styled callout box for .svx articles
@@ -226,6 +262,7 @@ src/
     categories/[slug]/ ← Category listing (includes 'other' fallback)
     (pages)/[slug]/    ← Generic static page template
     sitemap.xml/       ← Auto-generated sitemap
+    og/[slug].png/     ← Per-article OGP PNG (generated mode only)
 static/                ← Static assets (favicon, OG image, robots.txt)
 ```
 
