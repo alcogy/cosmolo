@@ -1,0 +1,14 @@
+{
+	"tech": {
+		"label": "Technology",
+		"description": "Articles about software, tools, and the web."
+	},
+	"design": {
+		"label": "Design",
+		"description": "Articles about UI/UX, visual design, and creativity."
+	},
+	"life": {
+		"label": "Life",
+		"description": "Articles about productivity, learning, and everyday topics."
+	}
+}

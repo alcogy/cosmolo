@@ -1,0 +1,7 @@
+{
+	"url": "https://your-site.example.com",
+	"name": "Your Site Name",
+	"description": "A content site built with Cosmolo — SvelteKit-native Markdown CMS.",
+	"twitterHandle": "@yourhandle",
+	"fallbackCategoryLabel": "Other"
+}
