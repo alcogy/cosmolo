@@ -31,11 +31,13 @@ Standard Markdown works out of the box — headings, **bold**, _italic_, `inline
 
 ### YouTube embed
 
-Use the `::youtube[id]` shorthand to embed a video:
-
+Use the shorthand to embed a video like this:
 ```
 ::youtube[dQw4w9WgXcQ]
 ```
+
+::youtube[dQw4w9WgXcQ]
+
 
 ### External links
 
