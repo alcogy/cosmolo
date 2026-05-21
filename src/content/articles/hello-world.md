@@ -39,6 +39,16 @@ Use the shorthand to embed a video like this:
 ::youtube[dQw4w9WgXcQ]
 
 
+### Images
+
+Place image files in `static/images/` and reference them with a root-relative path:
+
+```md
+![Alt text](/images/sample.jpg)
+```
+
+![Sample image](/images/sample.jpg)
+
 ### External links
 
 Links to external sites automatically get `target="_blank" rel="noopener noreferrer"` —
