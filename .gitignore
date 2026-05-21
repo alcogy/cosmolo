@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+build/
+.svelte-kit/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# AI tooling (not committed)
+CLAUDE.md
+.claude/
+.gemini/
+.mcp.json
+
+# Logs
+*.log
+npm-debug.log*
+/docs
