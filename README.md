@@ -40,7 +40,7 @@ and go" story. Cosmolo is that story.
 
 ```bash
 # 1. Use this repo as a GitHub template (click "Use this template") or clone it
-git clone https://github.com/your-org/cosmolo.git my-site
+git clone https://github.com/alcogy/cosmolo my-site
 cd my-site
 
 # 2. Install dependencies
@@ -294,52 +294,6 @@ Or connect via the Netlify dashboard. Build command: `bun run build`. Publish di
 
 Upload the contents of `build/` to your web root. Cosmolo generates clean static HTML,
 so no URL rewriting rules are required for basic use.
-
----
-
-## Roadmap
-
-### v0.1 — GitHub Template (current)
-
-A working, cloneable template that anyone can deploy in under 10 minutes.
-
-- [x] SvelteKit SSG with `adapter-static`
-- [x] MDSveX (`.svx`) + plain Markdown (`.md`) auto-detection
-- [x] Zod frontmatter validation
-- [x] Config-driven categories and site settings
-- [x] Fallback category (`/categories/other`)
-- [x] Generic static page route (`(pages)/[slug]`)
-- [x] YouTube embed extension and external link auto-targeting
-- [x] Sitemap generation
-- [x] `sort` field for manual article ordering
-- [x] `Callout.svelte` and `CategoryNav.svelte` components
-- [x] Related articles panel (same-category)
-- [ ] Sample content branch (3 categories, ~5 articles each, mix of .md/.svx)
-- [ ] Publish as GitHub template repository
-
-### v0.2 — OGP Image Generation
-
-Per-article OGP images generated at build time via a config flag:
-
-```json
-{ "ogImage": { "mode": "generated" } }
-```
-
-- `"static"` (default): Use `/static/og-image.png` for all pages.
-- `"generated"`: Use Satori + `@resvg/resvg-js` to render a per-article PNG at build time.
-
-### v0.3 — CLI Scaffolding Tool
-
-`npx create-cosmolo` to scaffold a new project interactively, pre-filling `config/site.json`
-and `config/categories.json` from prompted values.
-
-### Future ideas
-
-- **Theme system** — CSS custom property overrides via `config/theme.json`
-- **Tag support** — Secondary taxonomy layer alongside categories
-- **Pagination** — For categories with many articles
-- **i18n** — Multi-language content support
-- **Search** — Client-side search (e.g. Pagefind) as an optional add-on
 
 ---
 
