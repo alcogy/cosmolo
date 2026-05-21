@@ -307,9 +307,39 @@ Cosmolo uses `@sveltejs/adapter-static` and outputs to `build/`. Deploy the
 
 ### Cloudflare Pages
 
-1. Connect your GitHub repo in the Cloudflare Pages dashboard
-2. Set build command: `bun run build`
-3. Set output directory: `build`
+Cloudflare Pages offers a free tier with global CDN, automatic HTTPS, and Git-based
+deployments. It is the recommended hosting option for Cosmolo.
+
+**1. Push your repo to GitHub** (if you haven't already).
+
+**2. Create a new Pages project**
+
+1. Open the [Cloudflare dashboard](https://dash.cloudflare.com/) and go to **Workers & Pages**
+2. Click **Create** → **Pages** → **Connect to Git**
+3. Authorize Cloudflare and select your repository
+
+**3. Configure the build settings**
+
+| Setting | Value |
+|---------|-------|
+| Framework preset | None |
+| Build command | `npx bun run build` |
+| Build output directory | `build` |
+
+> Cloudflare Pages uses Node.js by default. Using `npx bun run build` ensures bun is
+> available without requiring a custom environment. Alternatively, add `BUN_VERSION=latest`
+> as an environment variable to enable native bun support.
+
+**4. Deploy**
+
+Click **Save and Deploy**. Cloudflare pulls your code, runs the build, and publishes
+the `build/` directory to their global edge network. Subsequent pushes to the default
+branch trigger automatic redeployments.
+
+**Custom domain**
+
+Go to your Pages project → **Custom domains** → add your domain. If your domain's DNS
+is managed on Cloudflare, the setup is automatic.
 
 ### Vercel
 
