@@ -15,6 +15,12 @@
 	const SvxComponent = $derived(
 		svxModules[`/src/content/articles/${data.article.slug}.svx`]?.default
 	);
+
+	const ogImage = $derived(
+		siteConfig.ogImage.mode === 'generated'
+			? `${siteConfig.url}/og/${data.article.slug}.png`
+			: `${siteConfig.url}/og-image.png`
+	);
 </script>
 
 <svelte:head>
@@ -23,6 +29,8 @@
 	<meta property="og:title" content={data.article.title} />
 	<meta property="og:description" content={data.article.excerpt} />
 	<meta property="og:type" content="article" />
+	<meta property="og:image" content={ogImage} />
+	<meta name="twitter:image" content={ogImage} />
 </svelte:head>
 
 <article class="article">
