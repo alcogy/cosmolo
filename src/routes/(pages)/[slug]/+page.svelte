@@ -32,5 +32,4 @@
 		}
 	}
 
-	// Prose styles are inherited from articles/[slug]/+page.svelte via :global(.prose)
 </style>

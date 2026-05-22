@@ -1,9 +1,24 @@
 <script lang="ts">
 	import { siteConfig } from '$lib/config';
 	import CategoryNav from '$lib/components/CategoryNav.svelte';
+	import Pagination from '$lib/components/Pagination.svelte';
 	import type { PageData } from './$types';
 
 	const { data }: { data: PageData } = $props();
+
+	const perPage = siteConfig.articlesPerPage;
+	let currentPage = $state(1);
+
+	// Reset page when slug changes (navigating between categories)
+	$effect(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		data.slug;
+		currentPage = 1;
+	});
+
+	const paginated = $derived(
+		data.articles.slice((currentPage - 1) * perPage, currentPage * perPage)
+	);
 </script>
 
 <svelte:head>
@@ -29,7 +44,7 @@
 			<p class="category-page__empty">No articles in this category yet.</p>
 		{:else}
 			<ul class="article-list">
-				{#each data.articles as article}
+				{#each paginated as article}
 					<li class="article-card">
 						<a href="/articles/{article.slug}" class="article-card__link">
 							<div class="article-card__meta">
@@ -43,6 +58,16 @@
 					</li>
 				{/each}
 			</ul>
+
+			<Pagination
+				total={data.articles.length}
+				{perPage}
+				{currentPage}
+				onPageChange={(p) => {
+					currentPage = p;
+					window.scrollTo({ top: 0, behavior: 'smooth' });
+				}}
+			/>
 		{/if}
 	</div>
 </section>

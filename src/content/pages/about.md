@@ -4,7 +4,7 @@ title: "About"
 
 ## About This Site
 
-This site is built with [Cosmolo](https://github.com/your-org/cosmolo) — a SvelteKit-native
+This site is built with [Cosmolo](https://github.com/alcogy/cosmolo) — a SvelteKit-native
 Markdown CMS starter.
 
 Replace this page with your own content. To edit it, open
