@@ -2,6 +2,8 @@
 
 A SvelteKit-native Markdown CMS starter — clone it, configure it, own it.
 
+**Website:** https://cosmolo.alcogy.dev
+
 Cosmolo gives you a production-ready content site scaffold built on SvelteKit,
 MDSveX, Zod-validated frontmatter, and a config-driven category system.
 No framework lock-in beyond SvelteKit.
@@ -123,6 +125,19 @@ date: "2025-01-15"        # ISO date string (optional)
 
 `sort` gives you manual ordering without relying on file timestamps or alphabetical order.
 Articles with an unknown `category` value are grouped under `/categories/other`.
+
+### Updated date
+
+Each article page automatically shows an "Updated:" date derived from the file's
+**last git commit timestamp**. No frontmatter change is needed — the date is resolved
+at build time by running `git log -1` against the article file.
+
+The updated date is displayed only when it differs from the `date` field. If the file
+has never been committed (e.g. a new draft that is not yet tracked by git), the updated
+date is omitted silently.
+
+> **Note:** file modification times (`mtime`) are intentionally not used. They reset on
+> `git clone`, which makes them unreliable in CI/CD environments.
 
 ### Supported file formats
 

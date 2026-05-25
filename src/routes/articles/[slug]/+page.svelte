@@ -43,6 +43,9 @@
 				{#if data.article.date}
 					<time class="article__date" datetime={data.article.date}>{data.article.date}</time>
 				{/if}
+				{#if data.updatedAt && data.updatedAt !== data.article.date}
+					<span class="article__updated">Updated: <time datetime={data.updatedAt}>{data.updatedAt}</time></span>
+				{/if}
 			</div>
 			<h1 class="article__title">{data.article.title}</h1>
 			<p class="article__excerpt">{data.article.excerpt}</p>
@@ -114,6 +117,11 @@
 		}
 
 		&__date {
+			font-size: 0.8125rem;
+			color: var(--color-text-secondary);
+		}
+
+		&__updated {
 			font-size: 0.8125rem;
 			color: var(--color-text-secondary);
 		}
