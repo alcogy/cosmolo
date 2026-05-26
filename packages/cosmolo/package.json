@@ -1,27 +1,30 @@
 {
 	"name": "cosmolo",
-	"version": "0.3.3",
+	"version": "0.3.4",
 	"type": "module",
 	"bin": {
-		"cosmolo": "src/cli/index.ts"
+		"cosmolo": "./dist/cli/index.js"
 	},
 	"exports": {
 		".": {
-			"types": "./src/index.ts",
-			"default": "./src/index.ts"
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
 		},
 		"./plugin": {
-			"types": "./src/plugin.ts",
-			"default": "./src/plugin.ts"
+			"types": "./dist/plugin.d.ts",
+			"default": "./dist/plugin.js"
 		}
 	},
 	"files": [
-		"src",
+		"dist",
 		"templates",
 		"README.md",
-		"LICENSE",
-		"!src/**/*.test.ts"
+		"LICENSE"
 	],
+	"scripts": {
+		"build": "tsc && cp src/virtual.d.ts dist/virtual.d.ts && chmod +x dist/cli/index.js",
+		"prepublishOnly": "npm run build"
+	},
 	"dependencies": {
 		"gray-matter": "^4.0.3",
 		"marked": "^15.0.0",
