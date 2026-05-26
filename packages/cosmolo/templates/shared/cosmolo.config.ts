@@ -1,4 +1,4 @@
-import { resolveConfig } from 'cosmolo';
+import { resolveConfig } from 'cosmolo/plugin';
 
 const config = resolveConfig({
 	articlesDir: 'src/content/articles',

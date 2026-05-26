@@ -4,6 +4,8 @@ import type { Plugin } from 'vite';
 import type { CosmoloConfig } from './types.js';
 import { resolveConfig } from './config.js';
 
+export { resolveConfig } from './config.js';
+
 const VIRTUAL_ID = 'cosmolo:content';
 const RESOLVED_ID = '\0cosmolo:content';
 

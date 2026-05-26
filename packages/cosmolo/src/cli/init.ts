@@ -48,6 +48,7 @@ function injectPackageScripts(projectRoot: string): void {
 
 	const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
 	pkg.scripts = pkg.scripts ?? {};
+	pkg.dependencies = pkg.dependencies ?? {};
 
 	let added = false;
 	const scripts: Record<string, string> = {
@@ -62,9 +63,14 @@ function injectPackageScripts(projectRoot: string): void {
 		}
 	}
 
+	if (!pkg.dependencies['cosmolo']) {
+		pkg.dependencies['cosmolo'] = 'latest';
+		added = true;
+	}
+
 	if (added) {
 		fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, '\t') + '\n');
-		console.log('  updated  package.json (added generate:* scripts)');
+		console.log('  updated  package.json (added cosmolo dependency + generate:* scripts)');
 	}
 }
 
@@ -158,18 +164,18 @@ export async function main(): Promise<void> {
 
 	// ── Next steps ──────────────────────────────────────────────────────────
 	console.log('\nDone! Next steps:\n');
-	console.log('  1. Install cosmolo:  npm install cosmolo  (or bun add cosmolo)');
+	console.log('  1. Run:              bun install');
 	if (isSSG) {
-		console.log('  2. Install adapter:  npm install -D @sveltejs/adapter-static');
+		console.log('  2. Install adapter:  bun add -D @sveltejs/adapter-static');
 	} else {
-		console.log('  2. Install adapter:  npm install -D @sveltejs/adapter-cloudflare  (or your adapter)');
+		console.log('  2. Install adapter:  bun add -D @sveltejs/adapter-cloudflare  (or your adapter)');
 	}
 	if (mode === 'full') {
-		console.log('  3. Install sass:     npm install -D sass  (SCSS used in Svelte templates)');
-		console.log('  4. Run:              npm run dev');
+		console.log('  3. Install sass:     bun add -D sass  (SCSS used in Svelte templates)');
+		console.log('  4. Run:              bun dev');
 	} else {
 		console.log('  3. Add your own +page.svelte files for each route.');
-		console.log('  4. Run:              npm run dev');
+		console.log('  4. Run:              bun dev');
 	}
 	console.log('\n  See https://github.com/alcogy/cosmolo for full documentation.\n');
 }
