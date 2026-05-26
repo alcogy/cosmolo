@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
@@ -23,24 +22,19 @@ function writeFile(dest: string, content: string): void {
 	fs.writeFileSync(dest, content, 'utf-8');
 }
 
-/** Recursively collect all files under a directory. Returns [srcPath, relativePath] pairs. */
 function collectFiles(dir: string): Array<[string, string]> {
 	const results: Array<[string, string]> = [];
 	function walk(current: string) {
 		for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
 			const full = path.join(current, entry.name);
-			if (entry.isDirectory()) {
-				walk(full);
-			} else {
-				results.push([full, path.relative(dir, full)]);
-			}
+			if (entry.isDirectory()) walk(full);
+			else results.push([full, path.relative(dir, full)]);
 		}
 	}
 	walk(dir);
 	return results;
 }
 
-/** Map template relative path → project destination path. */
 function destPath(relativePath: string, projectRoot: string): string {
 	const mapped = relativePath
 		.replace(/^routes\//, 'src/routes/')
@@ -48,11 +42,36 @@ function destPath(relativePath: string, projectRoot: string): string {
 	return path.join(projectRoot, mapped);
 }
 
-// ─── main ────────────────────────────────────────────────────────────────────
+function injectPackageScripts(projectRoot: string): void {
+	const pkgPath = path.join(projectRoot, 'package.json');
+	if (!fs.existsSync(pkgPath)) return;
 
-const PROJECT_ROOT = process.cwd();
+	const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+	pkg.scripts = pkg.scripts ?? {};
 
-async function main() {
+	let added = false;
+	const scripts: Record<string, string> = {
+		'generate:article':  'cosmolo generate article',
+		'generate:page':     'cosmolo generate page',
+		'generate:category': 'cosmolo generate category',
+	};
+	for (const [key, val] of Object.entries(scripts)) {
+		if (!pkg.scripts[key]) {
+			pkg.scripts[key] = val;
+			added = true;
+		}
+	}
+
+	if (added) {
+		fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, '\t') + '\n');
+		console.log('  updated  package.json (added generate:* scripts)');
+	}
+}
+
+// ─── main ─────────────────────────────────────────────────────────────────────
+
+export async function main(): Promise<void> {
+	const PROJECT_ROOT = process.cwd();
 	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
 	console.log('\ncosmolo init\n');
@@ -92,7 +111,6 @@ async function main() {
 		...fullFiles.map(([src, rel]) => [src, rel] as [string, string]),
 	];
 
-	// SSG: also generate src/routes/+layout.ts
 	const layoutTsPath = path.join(PROJECT_ROOT, 'src/routes/+layout.ts');
 	const layoutTsContent = 'export const prerender = true;\n';
 
@@ -103,7 +121,6 @@ async function main() {
 		const dest = destPath(rel, PROJECT_ROOT);
 		if (fs.existsSync(dest)) conflicts.push(path.relative(PROJECT_ROOT, dest));
 	}
-
 	if (isSSG && fs.existsSync(layoutTsPath)) {
 		conflicts.push(path.relative(PROJECT_ROOT, layoutTsPath));
 	}
@@ -118,7 +135,7 @@ async function main() {
 		if (mode === 'full') console.error(`     node_modules/cosmolo/templates/full/`);
 		if (isSSG) {
 			console.error('\n  For SSG prerendering, add this to src/routes/+layout.ts manually:');
-			console.error("     export const prerender = true;");
+			console.error('     export const prerender = true;');
 		}
 		process.exit(1);
 	}
@@ -134,6 +151,8 @@ async function main() {
 		writeFile(layoutTsPath, layoutTsContent);
 		console.log(`  created  src/routes/+layout.ts`);
 	}
+
+	injectPackageScripts(PROJECT_ROOT);
 
 	// ── Next steps ──────────────────────────────────────────────────────────
 	console.log('\nDone! Next steps:\n');
@@ -152,8 +171,3 @@ async function main() {
 	}
 	console.log('\n  See https://github.com/alcogy/cosmolo for full documentation.\n');
 }
-
-main().catch((err) => {
-	console.error(err);
-	process.exit(1);
-});

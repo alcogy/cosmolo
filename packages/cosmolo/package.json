@@ -3,7 +3,7 @@
 	"version": "0.3.0",
 	"type": "module",
 	"bin": {
-		"cosmolo": "./src/cli/init.ts"
+		"cosmolo": "./src/cli/index.ts"
 	},
 	"exports": {
 		".": "./src/index.ts",
