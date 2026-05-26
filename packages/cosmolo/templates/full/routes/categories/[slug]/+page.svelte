@@ -30,7 +30,7 @@
 		{#if data.articles.length === 0}
 			<p>No articles in this category yet.</p>
 		{:else}
-			<ul class="article-list">
+			<ul>
 				{#each paginated as article}
 					<li>
 						<a href="/articles/{article.slug}">

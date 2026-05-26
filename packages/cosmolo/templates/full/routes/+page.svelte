@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { getCategoryLabel } from 'cosmolo';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import config from '../../cosmolo.config';
 	import type { PageData } from './$types';
 
 	const { data }: { data: PageData } = $props();
@@ -18,7 +20,7 @@
 						(a) =>
 							a.title.toLowerCase().includes(q) ||
 							a.excerpt.toLowerCase().includes(q) ||
-							a.category.toLowerCase().includes(q)
+							getCategoryLabel(config, a.category).toLowerCase().includes(q)
 					);
 				})()
 	);
@@ -32,11 +34,11 @@
 	const paginated = $derived(filtered.slice((currentPage - 1) * perPage, currentPage * perPage));
 </script>
 
-<section class="home">
+<section>
 	<div class="container">
 		<h1>Articles</h1>
 
-		<div class="search">
+		<div>
 			<input
 				type="search"
 				placeholder="Search articles…"
@@ -53,11 +55,11 @@
 		{:else if filtered.length === 0}
 			<p>No articles matched your search.</p>
 		{:else}
-			<ul class="article-list">
+			<ul>
 				{#each paginated as article}
 					<li>
 						<a href="/articles/{article.slug}">
-							<span>{article.category}</span>
+							<span>{getCategoryLabel(config, article.category)}</span>
 							{#if article.date}
 								<time datetime={article.date}>{article.date}</time>
 							{/if}

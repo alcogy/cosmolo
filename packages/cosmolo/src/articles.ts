@@ -110,3 +110,15 @@ export function getTags(config: ResolvedCosmoloConfig): string[] {
 	getArticles(config).forEach((a) => a.tags.forEach((t) => tags.add(t)));
 	return Array.from(tags).sort();
 }
+
+/**
+ * Returns the Svelte component constructor for an .svx article, or undefined
+ * if the article is a plain .md file. Safe to call from Svelte components.
+ */
+export function getSvxComponent(
+	config: ResolvedCosmoloConfig,
+	slug: string
+): unknown | undefined {
+	const dir = '/' + config.articlesDir.replace(/^\/|\/$/g, '');
+	return (svxModules[`${dir}/${slug}.svx`] as { default: unknown } | undefined)?.default;
+}

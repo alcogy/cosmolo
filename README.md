@@ -503,6 +503,48 @@ management to an **existing SvelteKit project** without cloning the template.
 > **Status**: The package lives in `packages/cosmolo/` and is not yet published to npm.
 > The API is stable; publishing is pending reception evaluation.
 
+### Scaffolding with `cosmolo init`
+
+The fastest way to get started is the interactive init command, which copies all route
+files into your project:
+
+```bash
+bunx cosmolo init
+# or: npx cosmolo init
+```
+
+The command asks two questions:
+
+**1. Mode**
+
+| Mode | What gets generated |
+|---|---|
+| **A — Full** | `+page.server.ts` + `+page.svelte` for every route, plus `Pagination.svelte` |
+| **B — Slim** | `+page.server.ts` only — bring your own Svelte UI |
+
+**2. Adapter**
+
+| Adapter | Effect |
+|---|---|
+| **SSG** (`adapter-static`) | Also creates `src/routes/+layout.ts` with `export const prerender = true` |
+| **Serverless / SSR** | No layout file — routes are rendered on demand (Cloudflare Workers, Vercel, Node…) |
+
+If any target file already exists, the command lists every conflict and exits without
+writing anything. You can then remove or rename the conflicting files and re-run.
+
+**Manual prerender setup**
+
+If you chose Serverless during init but later switch to SSG, add this file:
+
+```typescript
+// src/routes/+layout.ts
+export const prerender = true;
+```
+
+Or, if you already have a `+layout.ts`, just add `export const prerender = true;` to it.
+
+---
+
 ### Setup
 
 **1. Install**
@@ -612,6 +654,8 @@ Key exports from `cosmolo`:
 | `getArticle(config, slug)` | Single article with HTML + TOC |
 | `getArticlesByTag(config, tag)` | Articles filtered by tag |
 | `getArticlesBySeries(config, series)` | Articles in a series |
+| `getSvxComponent(config, slug)` | Returns the Svelte component for an `.svx` article (safe in Svelte components) |
+| `getCategoryLabel(config, key)` | Category label by key — works in Svelte components (no `fs` at runtime) |
 | `getAllCategories(config)` | All category entries |
 | `loadSiteConfig(config)` | Site configuration object |
 | `createArticlesLoader(config)` | Load factory for article listings |

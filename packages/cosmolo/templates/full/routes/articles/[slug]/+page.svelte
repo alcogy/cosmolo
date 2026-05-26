@@ -1,16 +1,12 @@
 <script lang="ts">
+	import { getCategoryLabel, getSvxComponent } from 'cosmolo';
+	import config from '../../../../cosmolo.config';
 	import type { PageData } from './$types';
 	import type { Component } from 'svelte';
 
 	const { data }: { data: PageData } = $props();
 
-	const svxModules = import.meta.glob('/src/content/articles/*.svx', {
-		eager: true,
-	}) as Record<string, { default: Component }>;
-
-	const SvxComponent = $derived(
-		svxModules[`/src/content/articles/${data.article.slug}.svx`]?.default
-	);
+	const SvxComponent = $derived(getSvxComponent(config, data.article.slug) as Component | undefined);
 
 	const hasToc = $derived(data.article.toc.length >= 2);
 </script>
@@ -18,7 +14,9 @@
 <article>
 	<header>
 		<div>
-			<a href="/categories/{data.article.category}">{data.article.category}</a>
+			<a href="/categories/{data.article.category}">
+				{getCategoryLabel(config, data.article.category)}
+			</a>
 			{#if data.article.date}
 				<time datetime={data.article.date}>{data.article.date}</time>
 			{/if}

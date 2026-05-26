@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { getCategoryLabel } from 'cosmolo';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import config from '../../../../cosmolo.config';
 	import type { PageData } from './$types';
 
 	const { data }: { data: PageData } = $props();
@@ -26,11 +28,11 @@
 			<p>{data.articles.length} article{data.articles.length !== 1 ? 's' : ''}</p>
 		</header>
 
-		<ul class="article-list">
+		<ul>
 			{#each paginated as article}
 				<li>
 					<a href="/articles/{article.slug}">
-						<span>{article.category}</span>
+						<span>{getCategoryLabel(config, article.category)}</span>
 						{#if article.date}
 							<time datetime={article.date}>{article.date}</time>
 						{/if}
