@@ -32,6 +32,11 @@ export function cosmoloPlugin(userConfig: CosmoloConfig = {}): Plugin {
 
 	return {
 		name: 'cosmolo',
+		config() {
+			return {
+				ssr: { noExternal: ['cosmolo'] },
+			};
+		},
 		resolveId(id) {
 			if (id === VIRTUAL_ID) return RESOLVED_ID;
 		},
@@ -44,24 +49,26 @@ export function cosmoloPlugin(userConfig: CosmoloConfig = {}): Plugin {
 			const categoriesData = JSON.parse(fs.readFileSync(categoriesAbsPath, 'utf-8'));
 			const siteConfigData = JSON.parse(fs.readFileSync(siteConfigAbsPath, 'utf-8'));
 
+			const articlesDirAbs = path.resolve(process.cwd(), config.articlesDir.replace(/^\//, ''));
+			const pagesDirAbs = path.resolve(process.cwd(), config.pagesDir.replace(/^\//, ''));
+			const articlesExist = fs.existsSync(articlesDirAbs);
+			const pagesExist = fs.existsSync(pagesDirAbs);
+
+			const rawMdFilesExpr = articlesExist
+				? `import.meta.glob('${articlesDir}/*.md', { query: '?raw', import: 'default', eager: true })`
+				: '{}';
+			const svxModulesExpr = articlesExist
+				? `import.meta.glob('${articlesDir}/*.svx', { eager: true })`
+				: '{}';
+			const rawPageFilesExpr = pagesExist
+				? `import.meta.glob('${pagesDir}/*.md', { query: '?raw', import: 'default', eager: true })`
+				: '{}';
+
 			return `
-export const rawMdFiles = import.meta.glob(
-  '${articlesDir}/*.md',
-  { query: '?raw', import: 'default', eager: true }
-);
-
-export const svxModules = import.meta.glob(
-  '${articlesDir}/*.svx',
-  { eager: true }
-);
-
-export const rawPageFiles = import.meta.glob(
-  '${pagesDir}/*.md',
-  { query: '?raw', import: 'default', eager: true }
-);
-
+export const rawMdFiles = ${rawMdFilesExpr};
+export const svxModules = ${svxModulesExpr};
+export const rawPageFiles = ${rawPageFilesExpr};
 export const categoriesData = ${JSON.stringify(categoriesData)};
-
 export const siteConfigData = ${JSON.stringify(siteConfigData)};
 `.trim();
 		},
