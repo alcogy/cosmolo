@@ -2,11 +2,14 @@
 	"name": "cosmolo",
 	"version": "0.3.0",
 	"type": "module",
+	"bin": {
+		"cosmolo": "./src/cli/init.ts"
+	},
 	"exports": {
 		".": "./src/index.ts",
 		"./plugin": "./src/plugin.ts"
 	},
-	"files": ["src", "!src/**/*.test.ts"],
+	"files": ["src", "templates", "!src/**/*.test.ts"],
 	"dependencies": {
 		"gray-matter": "^4.0.3",
 		"marked": "^15.0.0",

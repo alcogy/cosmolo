@@ -1,0 +1,129 @@
+#!/usr/bin/env bun
+import * as fs from 'fs';
+import * as path from 'path';
+import * as readline from 'readline';
+import { fileURLToPath } from 'url';
+
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const TEMPLATE_DIR = path.resolve(__dirname, '../../templates');
+
+function ask(rl: readline.Interface, question: string): Promise<string> {
+	return new Promise((resolve) => rl.question(question, resolve));
+}
+
+function copyFile(src: string, dest: string): void {
+	fs.mkdirSync(path.dirname(dest), { recursive: true });
+	fs.copyFileSync(src, dest);
+}
+
+/** Recursively collect all files under a directory. Returns [srcPath, relativePath] pairs. */
+function collectFiles(dir: string): Array<[string, string]> {
+	const results: Array<[string, string]> = [];
+	function walk(current: string) {
+		for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+			const full = path.join(current, entry.name);
+			if (entry.isDirectory()) {
+				walk(full);
+			} else {
+				results.push([full, path.relative(dir, full)]);
+			}
+		}
+	}
+	walk(dir);
+	return results;
+}
+
+/** Map template relative path → project destination path. */
+function destPath(relativePath: string, projectRoot: string): string {
+	// templates/shared/routes/... → src/routes/...
+	// templates/shared/cosmolo.config.ts → cosmolo.config.ts
+	// templates/full/routes/... → src/routes/...
+	// templates/full/lib/... → src/lib/...
+	const mapped = relativePath
+		.replace(/^routes\//, 'src/routes/')
+		.replace(/^lib\//, 'src/lib/');
+	return path.join(projectRoot, mapped);
+}
+
+// ─── main ────────────────────────────────────────────────────────────────────
+
+const PROJECT_ROOT = process.cwd();
+
+async function main() {
+	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+	console.log('\ncosmolo init\n');
+	console.log('Choose an initialization mode:\n');
+	console.log('  A) Full  — server routes + Svelte page components');
+	console.log('  B) Slim  — server routes only (bring your own Svelte UI)\n');
+
+	let modeRaw = '';
+	while (!['a', 'b'].includes(modeRaw)) {
+		modeRaw = (await ask(rl, 'Mode [A/B]: ')).trim().toLowerCase();
+		if (!['a', 'b'].includes(modeRaw)) {
+			console.log('  Please enter A or B.');
+		}
+	}
+	const mode: 'full' | 'slim' = modeRaw === 'a' ? 'full' : 'slim';
+
+	rl.close();
+
+	// Collect files to write
+	const sharedDir = path.join(TEMPLATE_DIR, 'shared');
+	const sharedFiles = collectFiles(sharedDir);
+	const fullFiles = mode === 'full' ? collectFiles(path.join(TEMPLATE_DIR, 'full')) : [];
+
+	const allFiles: Array<[string, string]> = [
+		...sharedFiles.map(([src, rel]) => [src, rel] as [string, string]),
+		...fullFiles.map(([src, rel]) => [src, rel] as [string, string]),
+	];
+
+	// Conflict detection
+	const conflicts: string[] = [];
+	for (const [, rel] of allFiles) {
+		const dest = destPath(rel, PROJECT_ROOT);
+		if (fs.existsSync(dest)) {
+			conflicts.push(path.relative(PROJECT_ROOT, dest));
+		}
+	}
+
+	if (conflicts.length > 0) {
+		console.error('\nError: The following files already exist and would be overwritten:\n');
+		for (const f of conflicts) {
+			console.error(`  ${f}`);
+		}
+		console.error('\nTo resolve, either:');
+		console.error('  1. Remove or rename the conflicting files, then run cosmolo init again.');
+		console.error('  2. Manually copy the needed templates from the cosmolo package:');
+		console.error(`     node_modules/cosmolo/templates/shared/`);
+		if (mode === 'full') {
+			console.error(`     node_modules/cosmolo/templates/full/`);
+		}
+		process.exit(1);
+	}
+
+	// Write files
+	for (const [src, rel] of allFiles) {
+		const dest = destPath(rel, PROJECT_ROOT);
+		copyFile(src, dest);
+		console.log(`  created  ${path.relative(PROJECT_ROOT, dest)}`);
+	}
+
+	console.log('\nDone! Next steps:\n');
+	console.log('  1. Install cosmolo:  npm install cosmolo  (or bun add cosmolo)');
+	if (mode === 'full') {
+		console.log('  2. Install sass:     npm install -D sass  (SCSS is used in the Svelte templates)');
+		console.log('  3. Run:              npm run dev');
+	} else {
+		console.log('  2. Add your own +page.svelte files for each route.');
+		console.log('  3. Run:              npm run dev');
+	}
+	console.log('\n  See https://github.com/alcogy/cosmolo for full documentation.\n');
+}
+
+main().catch((err) => {
+	console.error(err);
+	process.exit(1);
+});
