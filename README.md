@@ -460,12 +460,17 @@ generated at `bun build` time.
 
 Cosmolo ships with an interactive CLI to scaffold content without touching files manually.
 
+**Template project** (`bun run …`):
+
 ```bash
 bun run generate            # Interactive menu (article / page / category)
 bun run generate:article    # Jump straight to article creation
 bun run generate:page       # Jump straight to page creation
 bun run generate:category   # Jump straight to category creation
 ```
+
+**Package** (`bun add cosmolo`): the same commands are available via the `cosmolo` binary.
+See [Content generators](#content-generators) in the Package section.
 
 ### Article
 
@@ -593,14 +598,14 @@ Replace the boilerplate in each route's `+page.server.ts` with a factory call:
 ```typescript
 // src/routes/+page.server.ts  (article listing)
 import { createArticlesLoader } from 'cosmolo';
-import config from '../cosmolo.config';
+import config from '../../cosmolo.config';
 export const load = createArticlesLoader(config);
 ```
 
 ```typescript
 // src/routes/articles/[slug]/+page.server.ts
 import { createArticleLoader, createArticleEntries } from 'cosmolo';
-import config from '../../cosmolo.config';
+import config from '../../../../cosmolo.config';
 export const entries = createArticleEntries(config);
 export const load = createArticleLoader(config);
 ```
@@ -608,7 +613,7 @@ export const load = createArticleLoader(config);
 ```typescript
 // src/routes/categories/[slug]/+page.server.ts
 import { createCategoryLoader, createCategoryEntries } from 'cosmolo';
-import config from '../../cosmolo.config';
+import config from '../../../../cosmolo.config';
 export const entries = createCategoryEntries(config);
 export const load = createCategoryLoader(config);
 ```
@@ -616,7 +621,7 @@ export const load = createCategoryLoader(config);
 ```typescript
 // src/routes/tags/[tag]/+page.server.ts
 import { createTagLoader, createTagEntries } from 'cosmolo';
-import config from '../../cosmolo.config';
+import config from '../../../../cosmolo.config';
 export const entries = createTagEntries(config);
 export const load = createTagLoader(config);
 ```
@@ -664,6 +669,34 @@ Key exports from `cosmolo`:
 | `createTagLoader(config)` | Load factory for tag pages |
 | `createPageLoader(config)` | Load factory for static pages |
 
+### Content generators
+
+The `cosmolo` binary includes the same generator commands as the template's `bun run generate:*` scripts.
+
+```bash
+bunx cosmolo generate             # Interactive menu
+bunx cosmolo generate article     # Create an article
+bunx cosmolo generate page        # Create a static page
+bunx cosmolo generate category    # Add a category
+```
+
+`cosmolo init` automatically adds convenience scripts to your `package.json`:
+
+```json
+{
+  "scripts": {
+    "generate:article":  "cosmolo generate article",
+    "generate:page":     "cosmolo generate page",
+    "generate:category": "cosmolo generate category"
+  }
+}
+```
+
+After that you can run `bun generate:article` (or `npm run generate:article`) directly.
+
+The generator reads `cosmolo.config.ts` at the project root to determine where to write
+files. If the config file is not found it falls back to the default paths.
+
 ---
 
 ## Development Commands
@@ -681,10 +714,25 @@ bun format    # Auto-format all files
 
 ## Deployment
 
-Cosmolo uses `@sveltejs/adapter-static` and outputs to `build/`. Deploy the
-`build/` directory to any static host.
+### SSG vs Serverless
 
-### Cloudflare Pages
+The Cosmolo **template** uses `@sveltejs/adapter-static` (SSG) and outputs a `build/`
+directory of static HTML/CSS/JS.
+
+When using the **`cosmolo` package** in an existing SvelteKit project you can choose any
+adapter. All content loading happens at build time via `import.meta.glob` (articles,
+pages) and the Vite plugin (JSON config), so there are no `fs` calls at runtime.
+This makes Cosmolo compatible with Cloudflare Workers, Vercel Edge, and any other
+serverless runtime.
+
+| Adapter | Notes |
+|---|---|
+| `@sveltejs/adapter-static` | Full SSG — set `prerender = true` globally. `cosmolo init` does this automatically. |
+| `@sveltejs/adapter-cloudflare` | Cloudflare Workers / Pages (SSR). No prerender config needed. |
+| `@sveltejs/adapter-vercel` | Vercel Edge / Node. No prerender config needed. |
+| `@sveltejs/adapter-node` | Self-hosted Node server. No prerender config needed. |
+
+### Cloudflare Pages (SSG)
 
 Cloudflare Pages offers a free tier with global CDN, automatic HTTPS, and Git-based
 deployments. It is the recommended hosting option for Cosmolo.
