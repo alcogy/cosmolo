@@ -387,6 +387,18 @@ Replace the placeholder assets in `static/` before deploying:
 ### Directory structure
 
 ```
+packages/
+  cosmolo/             ← npm package (bun add cosmolo)
+    src/
+      plugin.ts        ← Vite plugin (virtual module generator)
+      articles.ts      ← Article parsing and listing
+      categories.ts    ← Category helpers
+      pages.ts         ← Static page parsing
+      markdown.ts      ← marked configuration
+      loaders.ts       ← SvelteKit load function factories
+      types.ts         ← Shared TypeScript types
+      config.ts        ← Config resolver with defaults
+      index.ts         ← Package entry point
 config/
   site.json            ← Site-wide settings (URL, name, social)
   categories.json      ← Category registry (key → label + description)
@@ -480,6 +492,133 @@ bun scripts/create-cosmolo.ts [directory]
 
 Prompts for site name, URL, Twitter handle, and starter categories, then clones the Cosmolo
 template, updates the config files, and runs `bun install`.
+
+---
+
+## Package (`bun add cosmolo`)
+
+In addition to the template, Cosmolo is available as an npm package for adding content
+management to an **existing SvelteKit project** without cloning the template.
+
+> **Status**: The package lives in `packages/cosmolo/` and is not yet published to npm.
+> The API is stable; publishing is pending reception evaluation.
+
+### Setup
+
+**1. Install**
+
+```bash
+bun add cosmolo
+# peer deps (if not already installed)
+bun add -D vite @sveltejs/kit
+```
+
+**2. Create `cosmolo.config.ts`** in your project root
+
+```typescript
+import { resolveConfig } from 'cosmolo';
+
+export default resolveConfig({
+  articlesDir: 'src/content/articles',   // default — change if needed
+  pagesDir:    'src/content/pages',
+  siteConfigPath:      'config/site.json',
+  categoriesConfigPath: 'config/categories.json',
+});
+```
+
+All fields are optional. Omitting them uses the defaults shown above.
+
+**3. Register the Vite plugin** in `vite.config.ts`
+
+```typescript
+import { sveltekit } from '@sveltejs/kit/vite';
+import { cosmoloPlugin } from 'cosmolo/plugin';
+import config from './cosmolo.config';
+
+export default {
+  plugins: [sveltekit(), cosmoloPlugin(config)],
+};
+```
+
+The plugin generates a virtual module (`cosmolo:content`) that contains
+`import.meta.glob` calls for your configured paths. This is what makes
+the content directory configurable at build time.
+
+### Using load function factories
+
+Replace the boilerplate in each route's `+page.server.ts` with a factory call:
+
+```typescript
+// src/routes/+page.server.ts  (article listing)
+import { createArticlesLoader } from 'cosmolo';
+import config from '../cosmolo.config';
+export const load = createArticlesLoader(config);
+```
+
+```typescript
+// src/routes/articles/[slug]/+page.server.ts
+import { createArticleLoader, createArticleEntries } from 'cosmolo';
+import config from '../../cosmolo.config';
+export const entries = createArticleEntries(config);
+export const load = createArticleLoader(config);
+```
+
+```typescript
+// src/routes/categories/[slug]/+page.server.ts
+import { createCategoryLoader, createCategoryEntries } from 'cosmolo';
+import config from '../../cosmolo.config';
+export const entries = createCategoryEntries(config);
+export const load = createCategoryLoader(config);
+```
+
+```typescript
+// src/routes/tags/[tag]/+page.server.ts
+import { createTagLoader, createTagEntries } from 'cosmolo';
+import config from '../../cosmolo.config';
+export const entries = createTagEntries(config);
+export const load = createTagLoader(config);
+```
+
+For the article loader, you can pass a `getUpdatedAt` option to wire up
+git-based updated dates:
+
+```typescript
+import { execSync } from 'child_process';
+
+export const load = createArticleLoader(config, {
+  getUpdatedAt(slug) {
+    try {
+      return execSync(`git log -1 --format=%cI -- "src/content/articles/${slug}.md"`, {
+        encoding: 'utf-8',
+      }).trim().split('T')[0];
+    } catch { return ''; }
+  },
+});
+```
+
+### Package exports
+
+| Import | Description |
+|---|---|
+| `cosmolo` | Types, config resolver, all content functions |
+| `cosmolo/plugin` | `cosmoloPlugin(config)` — Vite plugin |
+
+Key exports from `cosmolo`:
+
+| Export | Description |
+|---|---|
+| `resolveConfig(config?)` | Merge user config with defaults |
+| `getArticles(config)` | All non-draft articles |
+| `getArticle(config, slug)` | Single article with HTML + TOC |
+| `getArticlesByTag(config, tag)` | Articles filtered by tag |
+| `getArticlesBySeries(config, series)` | Articles in a series |
+| `getAllCategories(config)` | All category entries |
+| `loadSiteConfig(config)` | Site configuration object |
+| `createArticlesLoader(config)` | Load factory for article listings |
+| `createArticleLoader(config, opts?)` | Load factory for single article |
+| `createCategoryLoader(config)` | Load factory for category pages |
+| `createTagLoader(config)` | Load factory for tag pages |
+| `createPageLoader(config)` | Load factory for static pages |
 
 ---
 
