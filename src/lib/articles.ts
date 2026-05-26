@@ -1,7 +1,10 @@
 import { z } from 'zod';
 import matter from 'gray-matter';
-import { renderMarkdown } from './markdown';
+import { renderMarkdown, generateToc } from './markdown';
+import type { TocEntry } from './markdown';
 import { isKnownCategory } from './categories';
+
+export type { TocEntry };
 
 export const articleFrontmatterSchema = z.object({
 	title: z.string(),
@@ -11,7 +14,12 @@ export const articleFrontmatterSchema = z.object({
 	date: z.preprocess(
 		(val) => (val instanceof Date ? val.toISOString().split('T')[0] : val),
 		z.string().default('')
-	)
+	),
+	tags: z.array(z.string()).default([]),
+	series: z.string().optional(),
+	seriesOrder: z.number().optional(),
+	draft: z.boolean().default(false),
+	related: z.array(z.string()).default([])
 });
 
 export type ArticleFrontmatter = z.infer<typeof articleFrontmatterSchema>;
@@ -20,6 +28,10 @@ export interface Article extends ArticleFrontmatter {
 	slug: string;
 	/** Rendered HTML for .md articles. Empty string for .svx articles. */
 	html: string;
+	/** Raw Markdown body (without frontmatter) for .md articles. Empty string for .svx articles. */
+	markdown: string;
+	/** Table of contents entries. Populated only for .md articles via getArticle(). */
+	toc: TocEntry[];
 }
 
 // Resolved at build time by Vite
@@ -37,14 +49,12 @@ function slugFromPath(path: string): string {
 	return path.replace(/^\/src\/content\/articles\//, '').replace(/\.(md|svx)$/, '');
 }
 
+/** Returns all non-draft article slugs. */
 export function getSlugs(): string[] {
-	const slugs = new Set<string>();
-	Object.keys(rawMdFiles).forEach((p) => slugs.add(slugFromPath(p)));
-	Object.keys(svxModules).forEach((p) => slugs.add(slugFromPath(p)));
-	return Array.from(slugs);
+	return getArticles().map((a) => a.slug);
 }
 
-/** Returns all articles sorted by `sort` descending (higher = first). */
+/** Returns all non-draft articles sorted by `sort` descending (higher = first). */
 export function getArticles(): Article[] {
 	const articles: Article[] = [];
 
@@ -52,19 +62,21 @@ export function getArticles(): Article[] {
 		const slug = slugFromPath(path);
 		const { data } = matter(raw);
 		const frontmatter = articleFrontmatterSchema.parse(data);
-		articles.push({ ...frontmatter, slug, html: '' });
+		if (frontmatter.draft) continue;
+		articles.push({ ...frontmatter, slug, html: '', markdown: '', toc: [] });
 	}
 
 	for (const [path, mod] of Object.entries(svxModules)) {
 		const slug = slugFromPath(path);
 		const frontmatter = articleFrontmatterSchema.parse(mod.metadata);
-		articles.push({ ...frontmatter, slug, html: '' });
+		if (frontmatter.draft) continue;
+		articles.push({ ...frontmatter, slug, html: '', markdown: '', toc: [] });
 	}
 
 	return articles.sort((a, b) => b.sort - a.sort);
 }
 
-/** Returns a single article with rendered HTML (only populated for .md). */
+/** Returns a single article with rendered HTML and TOC (draft articles included). */
 export async function getArticle(slug: string): Promise<Article> {
 	const mdPath = `/src/content/articles/${slug}.md`;
 	const svxPath = `/src/content/articles/${slug}.svx`;
@@ -74,12 +86,13 @@ export async function getArticle(slug: string): Promise<Article> {
 		const { data, content } = matter(raw);
 		const frontmatter = articleFrontmatterSchema.parse(data);
 		const html = await renderMarkdown(content);
-		return { ...frontmatter, slug, html };
+		const toc = generateToc(content);
+		return { ...frontmatter, slug, html, markdown: content, toc };
 	}
 
 	if (svxModules[svxPath] !== undefined) {
 		const frontmatter = articleFrontmatterSchema.parse(svxModules[svxPath].metadata);
-		return { ...frontmatter, slug, html: '' };
+		return { ...frontmatter, slug, html: '', markdown: '', toc: [] };
 	}
 
 	throw new Error(`Article not found: ${slug}`);
@@ -89,14 +102,33 @@ export async function getArticle(slug: string): Promise<Article> {
  * Returns articles belonging to a category slug.
  * The reserved slug 'other' aggregates articles whose category is not in categories.json.
  */
-export function getArticlesByCategory(
-	categorySlug: string,
-	excludeSlug?: string
-): Article[] {
+export function getArticlesByCategory(categorySlug: string, excludeSlug?: string): Article[] {
 	const all = getArticles();
 	const filtered =
 		categorySlug === 'other'
 			? all.filter((a) => !isKnownCategory(a.category))
 			: all.filter((a) => a.category === categorySlug);
 	return excludeSlug ? filtered.filter((a) => a.slug !== excludeSlug) : filtered;
+}
+
+export function getArticlesByTag(tag: string): Article[] {
+	return getArticles().filter((a) => a.tags.includes(tag));
+}
+
+/** Returns articles in a series, sorted by seriesOrder ascending. */
+export function getArticlesBySeries(seriesKey: string): Article[] {
+	return getArticles()
+		.filter((a) => a.series === seriesKey)
+		.sort((a, b) => (a.seriesOrder ?? 0) - (b.seriesOrder ?? 0));
+}
+
+/** Returns all unique tags across all non-draft articles. */
+export function getTags(): string[] {
+	const tags = new Set<string>();
+	getArticles().forEach((a) => a.tags.forEach((t) => tags.add(t)));
+	return Array.from(tags).sort();
+}
+
+export function getTagSlugs(): string[] {
+	return getTags();
 }

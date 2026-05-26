@@ -116,10 +116,15 @@ Every article needs these fields at the top of the file:
 ```yaml
 ---
 title: "My Article Title"
-category: "tech"          # must match a key in config/categories.json
+category: "tech"                  # must match a key in config/categories.json
 excerpt: "One sentence shown in article listings."
-sort: 100                 # higher number = appears earlier in listings
-date: "2025-01-15"        # ISO date string (optional)
+sort: 100                         # higher number = appears earlier in listings
+date: "2025-01-15"                # ISO date string (optional)
+tags: ["svelte", "tutorial"]      # optional — tag listing pages at /tags/<tag>
+series: "getting-started"         # optional — groups articles into a series
+seriesOrder: 1                    # optional — position within the series (1-based)
+draft: true                       # optional — exclude from build output and listings
+related: ["slug-a", "slug-b"]     # optional — override auto-detected related articles
 ---
 ```
 
@@ -138,6 +143,57 @@ date is omitted silently.
 
 > **Note:** file modification times (`mtime`) are intentionally not used. They reset on
 > `git clone`, which makes them unreliable in CI/CD environments.
+
+### Draft mode
+
+Add `draft: true` to any article's frontmatter to exclude it from build output and all listings.
+Draft articles are invisible in production but accessible during `bun dev` via their direct URL,
+so you can preview them before publishing.
+
+```yaml
+---
+title: "Work in Progress"
+draft: true
+---
+```
+
+### Tags
+
+Articles can have multiple tags. Each tag gets a listing page at `/tags/<tag>`.
+
+```yaml
+tags: ["svelte", "tutorial"]
+```
+
+Tag links appear as chips in the article header. Tags are case-sensitive (`Svelte` and `svelte`
+are treated as different tags). Unused tags (no articles) produce no page.
+
+### Series
+
+Group related articles into an ordered sequence. Prev/next navigation is shown inside each article.
+
+```yaml
+series: "getting-started"
+seriesOrder: 1
+```
+
+All articles sharing the same `series` value are linked together, sorted by `seriesOrder` ascending.
+`seriesOrder` is 1-based by convention, but any integers work.
+
+### Manual related articles
+
+By default, the "More in this category" panel shows up to 4 articles from the same category.
+Override it by listing slugs explicitly — the specified articles replace the auto-detected ones entirely.
+
+```yaml
+related: ["slug-a", "slug-b"]
+```
+
+### Table of contents
+
+For `.md` articles with 2 or more `##` headings, a table of contents is automatically rendered
+above the article body. Heading levels `##` through `######` are included; indentation reflects
+the nesting depth. `.svx` articles do not get an auto-generated TOC.
 
 ### Supported file formats
 
@@ -193,6 +249,88 @@ Frontmatter:
 ---
 title: "About"
 ---
+```
+
+---
+
+## Content APIs
+
+Cosmolo generates static JSON and RSS endpoints alongside your HTML pages.
+All outputs are static files — no server required.
+
+| Endpoint | Content-Type | Description |
+|---|---|---|
+| `/api/articles.json` | `application/json` | Slug + title for all non-draft articles |
+| `/api/articles/<slug>.json` | `application/json` | Full content and metadata for one article |
+| `/api/categories.json` | `application/json` | All categories as structured JSON |
+| `/rss.xml` | `application/rss+xml` | RSS 2.0 feed for feed readers |
+
+### `/api/articles.json`
+
+Index endpoint — slug and title only. Lightweight enough for any article count.
+Add fields as needed by editing `src/routes/api/articles.json/+server.ts`.
+
+```json
+{
+  "articles": [
+    { "slug": "hello-world", "title": "Hello, Cosmolo" }
+  ]
+}
+```
+
+### `/api/articles/<slug>.json`
+
+Per-article endpoint — full metadata plus the article body in the configured format.
+
+The body format is set in `config/site.json` under `api.articleBody` and applies at build time:
+
+```json
+"api": {
+  "articleBody": "html"
+}
+```
+
+| Value | `contentsFormat` | `contents` |
+|---|---|---|
+| `"html"` | `"html"` | Rendered HTML (default) |
+| `"markdown"` | `"markdown"` | Raw Markdown body (frontmatter stripped) |
+| `"plaintext"` | `"plaintext"` | Plain text — Markdown syntax stripped |
+
+The response always uses `contents` as the field name. `contentsFormat` tells you which format was used:
+
+```json
+{
+  "slug": "hello-world",
+  "title": "Hello, Cosmolo",
+  "excerpt": "A quick tour of what Cosmolo can do out of the box.",
+  "category": "tech",
+  "categoryLabel": "Technology",
+  "tags": ["svelte", "tutorial"],
+  "series": null,
+  "seriesOrder": null,
+  "date": "2025-01-01",
+  "sort": 100,
+  "related": [],
+  "contentsFormat": "html",
+  "contents": "<h2 id=\"welcome\">Welcome</h2>...",
+  "url": "https://your-site.example.com/articles/hello-world"
+}
+```
+
+> For `.svx` articles all body fields are empty strings — those are Svelte components
+> compiled at build time and cannot be serialized as HTML or Markdown.
+
+> **Note:** All API endpoints are static files served publicly. Do not include sensitive
+> or private information in article frontmatter or content if you enable these endpoints.
+
+### `/rss.xml`
+
+Standard RSS 2.0. Point feed readers at `<your-site>/rss.xml`.
+
+To add RSS autodiscovery to your layout, add this inside `<svelte:head>` in `src/routes/+layout.svelte`:
+
+```html
+<link rel="alternate" type="application/rss+xml" title="Your Site Name" href="/rss.xml" />
 ```
 
 ---
@@ -272,11 +410,15 @@ src/
     +layout.ts         ← prerender = true (global SSG)
     +layout.svelte     ← Header, footer, global meta tags
     +page.server.ts    ← Home: loads article list
-    +page.svelte       ← Home: article card grid
+    +page.svelte       ← Home: article card grid with search + pagination
     articles/[slug]/   ← Article page (.md → {@html} / .svx → <svelte:component>)
     categories/[slug]/ ← Category listing (includes 'other' fallback)
+    tags/[tag]/        ← Tag listing page
     (pages)/[slug]/    ← Generic static page template
-    sitemap.xml/       ← Auto-generated sitemap
+    api/articles.json/ ← Static JSON feed of all articles
+    api/categories.json/ ← Static JSON feed of all categories
+    rss.xml/           ← RSS 2.0 feed
+    sitemap.xml/       ← Auto-generated sitemap (includes tag URLs)
     og/[slug].png/     ← Per-article OGP PNG (generated mode only)
 static/                ← Static assets (favicon, OG image, robots.txt)
 ```

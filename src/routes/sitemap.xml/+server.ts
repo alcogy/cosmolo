@@ -1,4 +1,4 @@
-import { getSlugs } from '$lib/articles';
+import { getSlugs, getTagSlugs } from '$lib/articles';
 import { getCategorySlugs } from '$lib/categories';
 import { siteConfig } from '$lib/config';
 import { getPageSlugs } from '$lib/pages';
@@ -11,8 +11,9 @@ export function GET(): Response {
 	const articleUrls = getSlugs().map((slug) => `${base}/articles/${slug}`);
 	const categoryUrls = getCategorySlugs().map((slug) => `${base}/categories/${slug}`);
 	const pageUrls = getPageSlugs().map((slug) => `${base}/${slug}`);
+	const tagUrls = getTagSlugs().map((tag) => `${base}/tags/${tag}`);
 
-	const allUrls = [base, ...articleUrls, ...categoryUrls, ...pageUrls];
+	const allUrls = [base, ...articleUrls, ...categoryUrls, ...pageUrls, ...tagUrls];
 
 	const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

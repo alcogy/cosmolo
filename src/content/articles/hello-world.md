@@ -4,6 +4,7 @@ category: "tech"
 excerpt: "A quick tour of what Cosmolo can do out of the box."
 sort: 100
 date: "2025-01-01"
+tags: ["svelte", "tutorial"]
 ---
 
 ## Welcome

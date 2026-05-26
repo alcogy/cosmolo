@@ -7,7 +7,6 @@
 
 	const { data }: { data: PageData } = $props();
 
-	// Eagerly import all .svx modules so we can pick the right component by slug
 	const svxModules = import.meta.glob('/src/content/articles/*.svx', {
 		eager: true
 	}) as Record<string, { default: Component }>;
@@ -21,6 +20,8 @@
 			? `${siteConfig.url}/og/${data.article.slug}.png`
 			: `${siteConfig.url}/og-image.png`
 	);
+
+	const hasToc = $derived(data.article.toc.length >= 2);
 </script>
 
 <svelte:head>
@@ -49,7 +50,48 @@
 			</div>
 			<h1 class="article__title">{data.article.title}</h1>
 			<p class="article__excerpt">{data.article.excerpt}</p>
+			{#if data.article.tags.length > 0}
+				<div class="article__tags">
+					{#each data.article.tags as tag}
+						<a href="/tags/{tag}" class="article__tag">#{tag}</a>
+					{/each}
+				</div>
+			{/if}
 		</header>
+
+		{#if data.article.series}
+			<nav class="series">
+				<p class="series__name">Series: {data.article.series}</p>
+				{#if data.seriesTotal > 1}
+					<p class="series__progress">Part {data.article.seriesOrder ?? '?'} of {data.seriesTotal}</p>
+				{/if}
+				<div class="series__nav">
+					{#if data.seriesPrev}
+						<a href="/articles/{data.seriesPrev.slug}" class="series__link series__link--prev">
+							&#8592; {data.seriesPrev.title}
+						</a>
+					{/if}
+					{#if data.seriesNext}
+						<a href="/articles/{data.seriesNext.slug}" class="series__link series__link--next">
+							{data.seriesNext.title} &#8594;
+						</a>
+					{/if}
+				</div>
+			</nav>
+		{/if}
+
+		{#if hasToc}
+			<nav class="toc" aria-label="Table of contents">
+				<p class="toc__heading">Contents</p>
+				<ol class="toc__list">
+					{#each data.article.toc as entry}
+						<li class="toc__item" style="--depth: {entry.level - 2}">
+							<a href="#{entry.id}" class="toc__link">{entry.text}</a>
+						</li>
+					{/each}
+				</ol>
+			</nav>
+		{/if}
 
 		<div class="article__body prose">
 			{#if SvxComponent}
@@ -137,6 +179,28 @@
 			font-size: 1.0625rem;
 			color: var(--color-text-secondary);
 			line-height: 1.6;
+			margin-bottom: var(--spacing-md);
+		}
+
+		&__tags {
+			display: flex;
+			flex-wrap: wrap;
+			gap: var(--spacing-xs);
+		}
+
+		&__tag {
+			font-size: 0.8125rem;
+			color: var(--color-text-secondary);
+			text-decoration: none;
+			border: 1px solid var(--color-border);
+			border-radius: 999px;
+			padding: 0.1875rem 0.625rem;
+			transition: border-color var(--transition-fast), color var(--transition-fast);
+
+			&:hover {
+				border-color: var(--color-accent);
+				color: var(--color-accent);
+			}
 		}
 
 		&__body {
@@ -157,6 +221,84 @@
 
 			&:hover {
 				color: var(--color-text-primary);
+			}
+		}
+	}
+
+	.series {
+		margin-bottom: var(--spacing-xl);
+		padding: var(--spacing-md) var(--spacing-lg);
+		border: 1px solid var(--color-border);
+		border-left: 3px solid var(--color-accent);
+		border-radius: var(--border-radius);
+		background: var(--color-bg-secondary, var(--color-bg));
+
+		&__name {
+			font-size: 0.8125rem;
+			font-weight: 600;
+			color: var(--color-accent);
+			margin-bottom: var(--spacing-xs);
+		}
+
+		&__progress {
+			font-size: 0.8125rem;
+			color: var(--color-text-secondary);
+			margin-bottom: var(--spacing-md);
+		}
+
+		&__nav {
+			display: flex;
+			gap: var(--spacing-md);
+			flex-wrap: wrap;
+		}
+
+		&__link {
+			font-size: 0.9375rem;
+			color: var(--color-text-primary);
+			text-decoration: none;
+
+			&:hover {
+				color: var(--color-accent);
+			}
+
+			&--next {
+				margin-left: auto;
+			}
+		}
+	}
+
+	.toc {
+		margin-bottom: var(--spacing-xl);
+		padding: var(--spacing-md) var(--spacing-lg);
+		border: 1px solid var(--color-border);
+		border-radius: var(--border-radius);
+
+		&__heading {
+			font-size: 0.75rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			color: var(--color-text-secondary);
+			margin-bottom: var(--spacing-sm);
+		}
+
+		&__list {
+			list-style: none;
+			display: grid;
+			gap: var(--spacing-xs);
+		}
+
+		&__item {
+			padding-left: calc(var(--depth, 0) * 1rem);
+		}
+
+		&__link {
+			font-size: 0.9375rem;
+			color: var(--color-text-secondary);
+			text-decoration: none;
+
+			&:hover {
+				color: var(--color-accent);
 			}
 		}
 	}
@@ -218,5 +360,4 @@
 			margin-bottom: var(--spacing-md);
 		}
 	}
-
 </style>
