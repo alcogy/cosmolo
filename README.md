@@ -40,11 +40,12 @@ a canonical "just add Markdown and go" story without asking you to leave.
 ## Quick Start
 
 ```bash
-# In an existing SvelteKit project:
-bun add cosmolo
-
-# Scaffold routes and config files interactively
+# In an existing SvelteKit project, scaffold routes and config interactively:
 bunx cosmolo init
+
+# Install cosmolo and other dependencies (cosmolo is added to package.json by init):
+bun install
+bun add -D @sveltejs/adapter-static   # or your adapter of choice
 
 # Start writing content
 bun generate:article
@@ -53,7 +54,7 @@ bun generate:article
 bun dev
 ```
 
-`cosmolo init` asks two questions — which mode (full UI or server-only) and which adapter (SSG or serverless) — then copies the appropriate route files into your project.
+`cosmolo init` asks two questions — which mode (full UI or server-only) and which adapter (SSG or serverless) — then copies the appropriate route files into your project and adds `cosmolo` to your `package.json` dependencies automatically.
 
 ---
 
@@ -325,7 +326,7 @@ bun add -D vite @sveltejs/kit
 **1. Create `cosmolo.config.ts`** in your project root
 
 ```typescript
-import { resolveConfig } from 'cosmolo';
+import { resolveConfig } from 'cosmolo/plugin';
 
 export default resolveConfig({
   articlesDir: 'src/content/articles',    // default
@@ -334,6 +335,11 @@ export default resolveConfig({
   categoriesConfigPath: 'config/categories.json', // default
 });
 ```
+
+> **Important:** import `resolveConfig` from `'cosmolo/plugin'`, not `'cosmolo'`.
+> The main `cosmolo` entry imports virtual module bindings (`cosmolo:content`) that are
+> only available inside Vite's build pipeline. Using it in `vite.config.ts` (which is
+> loaded before the plugin is registered) causes an `ERR_UNSUPPORTED_ESM_URL_SCHEME` error.
 
 All fields are optional. Omitting them uses the defaults shown above.
 
@@ -467,7 +473,7 @@ Category labels and SVX components are safe to use directly in `.svelte` files:
 | Import | Description |
 |---|---|
 | `cosmolo` | Types, config resolver, all content functions |
-| `cosmolo/plugin` | `cosmoloPlugin(config)` — Vite plugin |
+| `cosmolo/plugin` | `cosmoloPlugin(config)` — Vite plugin; also exports `resolveConfig` |
 
 Key exports from `cosmolo`:
 
