@@ -78,15 +78,15 @@ export async function main(): Promise<void> {
 
 	// ── Mode selection ──────────────────────────────────────────────────────
 	console.log('Choose an initialization mode:\n');
-	console.log('  A) Full  — server routes + Svelte page components');
-	console.log('  B) Slim  — server routes only (bring your own Svelte UI)\n');
+	console.log('  1) Full  — server routes + Svelte page components');
+	console.log('  2) Slim  — server routes only (bring your own Svelte UI)\n');
 
 	let modeRaw = '';
-	while (!['a', 'b'].includes(modeRaw)) {
-		modeRaw = (await ask(rl, 'Mode [A/B]: ')).trim().toLowerCase();
-		if (!['a', 'b'].includes(modeRaw)) console.log('  Please enter A or B.');
+	while (!['1', '2'].includes(modeRaw)) {
+		modeRaw = (await ask(rl, 'Mode [1/2]: ')).trim();
+		if (!['1', '2'].includes(modeRaw)) console.log('  Please enter 1 or 2.');
 	}
-	const mode: 'full' | 'slim' = modeRaw === 'a' ? 'full' : 'slim';
+	const mode: 'full' | 'slim' = modeRaw === '1' ? 'full' : 'slim';
 
 	// ── Adapter selection ───────────────────────────────────────────────────
 	console.log('\nChoose your deployment adapter:\n');
@@ -99,8 +99,6 @@ export async function main(): Promise<void> {
 		if (!['1', '2'].includes(adapterRaw)) console.log('  Please enter 1 or 2.');
 	}
 	const isSSG = adapterRaw === '1';
-
-	rl.close();
 
 	// ── Collect files ───────────────────────────────────────────────────────
 	const sharedFiles = collectFiles(path.join(TEMPLATE_DIR, 'shared'));
@@ -126,19 +124,23 @@ export async function main(): Promise<void> {
 	}
 
 	if (conflicts.length > 0) {
-		console.error('\nError: The following files already exist and would be overwritten:\n');
-		for (const f of conflicts) console.error(`  ${f}`);
-		console.error('\nTo resolve, either:');
-		console.error('  1. Remove or rename the conflicting files, then run cosmolo init again.');
-		console.error('  2. Manually copy the needed templates from the cosmolo package:');
-		console.error(`     node_modules/cosmolo/templates/shared/`);
-		if (mode === 'full') console.error(`     node_modules/cosmolo/templates/full/`);
-		if (isSSG) {
-			console.error('\n  For SSG prerendering, add this to src/routes/+layout.ts manually:');
-			console.error('     export const prerender = true;');
+		console.log('\nThe following files already exist:\n');
+		for (const f of conflicts) console.log(`  ${f}`);
+
+		let overwriteRaw = '';
+		while (!['y', 'n'].includes(overwriteRaw)) {
+			overwriteRaw = (await ask(rl, '\nOverwrite all? [y/N]: ')).trim().toLowerCase() || 'n';
+			if (!['y', 'n'].includes(overwriteRaw)) console.log('  Please enter y or n.');
 		}
-		process.exit(1);
+
+		if (overwriteRaw === 'n') {
+			console.log('\nAborted. No files were written.\n');
+			rl.close();
+			process.exit(0);
+		}
 	}
+
+	rl.close();
 
 	// ── Write files ─────────────────────────────────────────────────────────
 	for (const [src, rel] of allFiles) {
