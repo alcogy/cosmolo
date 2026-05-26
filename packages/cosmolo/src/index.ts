@@ -21,3 +21,14 @@ export {
 export { articleFrontmatterSchema, getArticles, getArticle, getSlugs, getArticlesByCategory, getArticlesByTag, getArticlesBySeries, getTags } from './articles.js';
 export { getPageSlugs, getPage } from './pages.js';
 export { renderMarkdown, generateToc } from './markdown.js';
+export {
+	createArticlesLoader,
+	createArticleLoader,
+	createCategoryLoader,
+	createTagLoader,
+	createPageLoader,
+	createArticleEntries,
+	createCategoryEntries,
+	createTagEntries,
+	createPageEntries,
+} from './loaders.js';
