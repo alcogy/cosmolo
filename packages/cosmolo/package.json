@@ -6,8 +6,14 @@
 		"cosmolo": "./src/cli/index.ts"
 	},
 	"exports": {
-		".": "./src/index.ts",
-		"./plugin": "./src/plugin.ts"
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		},
+		"./plugin": {
+			"types": "./src/plugin.ts",
+			"default": "./src/plugin.ts"
+		}
 	},
 	"files": ["src", "templates", "!src/**/*.test.ts"],
 	"dependencies": {
