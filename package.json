@@ -9,7 +9,11 @@
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"lint": "prettier --check . && eslint .",
-		"format": "prettier --write ."
+		"format": "prettier --write .",
+		"generate": "bun scripts/generate.ts",
+		"generate:article": "bun scripts/generate.ts article",
+		"generate:page": "bun scripts/generate.ts page",
+		"generate:category": "bun scripts/generate.ts category"
 	},
 	"dependencies": {
 		"@fontsource/inter": "^5.2.8",

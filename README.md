@@ -444,6 +444,45 @@ generated at `bun build` time.
 
 ---
 
+## Generators
+
+Cosmolo ships with an interactive CLI to scaffold content without touching files manually.
+
+```bash
+bun run generate            # Interactive menu (article / page / category)
+bun run generate:article    # Jump straight to article creation
+bun run generate:page       # Jump straight to page creation
+bun run generate:category   # Jump straight to category creation
+```
+
+### Article
+
+Prompts for title, slug, category, excerpt, tags, sort, date, draft status, and series.
+Creates `src/content/articles/<slug>.md` with pre-filled frontmatter.
+
+### Page
+
+Prompts for title and slug. Creates `src/content/pages/<slug>.md`.
+
+### Category
+
+Prompts for key (slug), label, and description. Appends the new entry to `config/categories.json`.
+
+---
+
+## New Project
+
+To scaffold a new Cosmolo project from scratch:
+
+```bash
+bun scripts/create-cosmolo.ts [directory]
+```
+
+Prompts for site name, URL, Twitter handle, and starter categories, then clones the Cosmolo
+template, updates the config files, and runs `bun install`.
+
+---
+
 ## Development Commands
 
 ```bash
