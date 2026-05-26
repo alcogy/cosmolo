@@ -43,9 +43,11 @@ a canonical "just add Markdown and go" story without asking you to leave.
 # In an existing SvelteKit project, scaffold routes and config interactively:
 bunx cosmolo init
 
-# Install cosmolo and other dependencies (cosmolo is added to package.json by init):
+# Install dependencies (cosmolo is added to package.json by init):
 bun install
-bun add -D @sveltejs/adapter-static   # or your adapter of choice
+
+# (Optional) Install an adapter if not already set up in your SvelteKit project:
+# bun add -D @sveltejs/adapter-static
 
 # Start writing content
 bun generate:article
