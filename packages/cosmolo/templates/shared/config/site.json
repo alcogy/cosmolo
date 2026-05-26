@@ -1,0 +1,10 @@
+{
+	"url": "https://your-site.example.com",
+	"name": "Your Site Name",
+	"description": "A content site built with Cosmolo.",
+	"twitterHandle": "@yourhandle",
+	"fallbackCategoryLabel": "Other",
+	"articlesPerPage": 10,
+	"ogImage": { "mode": "static" },
+	"api": { "articleBody": "html" }
+}
