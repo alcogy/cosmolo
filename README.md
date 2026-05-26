@@ -11,9 +11,10 @@ A SvelteKit-native content management package — add Markdown-based blogging to
 
 ## Why Cosmolo
 
-Developers who love SvelteKit often reach for Astro when building blogs or docs sites —
-not because they prefer Astro, but because SvelteKit lacks a canonical "just add Markdown
-and go" story. Cosmolo is that story.
+Astro is a great product — but for SvelteKit developers it's a heavy choice.
+Switching frameworks means leaving behind the Svelte component model, the SvelteKit
+router, and all the ecosystem knowledge you've built up. Cosmolo gives SvelteKit
+a canonical "just add Markdown and go" story without asking you to leave.
 
 | | Cosmolo | Astro | Nuxt Content | SvelteKit (vanilla) |
 |---|---|---|---|---|
@@ -22,6 +23,7 @@ and go" story. Cosmolo is that story.
 | Type-safe frontmatter | Zod | TS inference | Zod (optional) | Manual |
 | Component in Markdown | Yes (.svx) | Yes (.mdx) | Yes | No |
 | Config-driven categories | Yes | No | No | No |
+| Headless CMS (JSON API) | Yes | Manual | Manual | Manual |
 | Learning curve | SvelteKit only | Astro concepts | Vue + Nuxt | SvelteKit only |
 
 **Core principles:**
@@ -30,7 +32,8 @@ and go" story. Cosmolo is that story.
 2. **Config over convention** — Site identity and taxonomy are JSON files. No source code changes needed to add a category.
 3. **Type-safe content** — Frontmatter is validated with Zod at build time. Malformed articles fail loudly during `bun build`.
 4. **MDSveX as a first-class citizen** — `.md` and `.svx` share the same routing and Zod schema; the system auto-detects which to use.
-5. **Non-invasive** — Cosmolo is an npm package, not a framework. It adds content management to your existing project without owning your routes or components.
+5. **Headless-ready** — Cosmolo generates static JSON endpoints alongside your HTML pages, so your content can be consumed by external apps or frontends without any server.
+6. **Non-invasive** — Cosmolo is an npm package, not a framework. It adds content management to your existing project without owning your routes or components.
 
 ---
 
@@ -266,6 +269,44 @@ Prompts for title and slug. Creates `src/content/pages/<slug>.md`.
 ### Category
 
 Prompts for key (slug), label, and description. Appends the new entry to `config/categories.json`.
+
+---
+
+## Headless CMS
+
+Cosmolo can expose your content as static JSON endpoints, making it usable as a
+headless CMS alongside — or independently of — your rendered pages.
+
+All endpoints are **static files** generated at build time. No server or database is required.
+
+| Endpoint | Description |
+|---|---|
+| `/api/articles.json` | Slug + title for all non-draft articles |
+| `/api/articles/<slug>.json` | Full metadata and body for a single article |
+| `/api/categories.json` | All categories with slug, label, and description |
+| `/rss.xml` | RSS 2.0 feed |
+| `/sitemap.xml` | XML sitemap including all article, category, and tag URLs |
+
+`cosmolo init` scaffolds `rss.xml` and `sitemap.xml` automatically. The JSON API routes
+(`api/articles.json`, `api/articles/[slug].json`, `api/categories.json`) can be added
+manually or customized to return exactly the fields your consumers need.
+
+### Article body format
+
+The per-article endpoint supports three body formats, configurable in `config/site.json`:
+
+```json
+"api": { "articleBody": "html" }
+```
+
+| Value | `contentsFormat` | `contents` |
+|---|---|---|
+| `"html"` | `"html"` | Rendered HTML (default) |
+| `"markdown"` | `"markdown"` | Raw Markdown (frontmatter stripped) |
+| `"plaintext"` | `"plaintext"` | Plain text — Markdown syntax removed |
+
+> **Note:** All API endpoints are publicly accessible static files. Do not include
+> sensitive or private information in article frontmatter or content.
 
 ---
 
