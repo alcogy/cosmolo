@@ -1,16 +1,11 @@
-import fs from 'fs';
-import path from 'path';
+import { categoriesData, siteConfigData } from 'cosmolo:content';
 import type { CategoryEntry, ResolvedCosmoloConfig, SiteConfig } from './types.js';
 
 type CategoriesMap = Record<string, { label: string; description: string }>;
 
-function readCategoriesMap(config: ResolvedCosmoloConfig): CategoriesMap {
-	const raw = fs.readFileSync(path.resolve(config.categoriesConfigPath), 'utf-8');
-	return JSON.parse(raw) as CategoriesMap;
-}
+const map = categoriesData as CategoriesMap;
 
-export function getAllCategories(config: ResolvedCosmoloConfig): CategoryEntry[] {
-	const map = readCategoriesMap(config);
+export function getAllCategories(_config: ResolvedCosmoloConfig): CategoryEntry[] {
 	return Object.entries(map).map(([slug, { label, description }]) => ({
 		slug,
 		label,
@@ -18,28 +13,23 @@ export function getAllCategories(config: ResolvedCosmoloConfig): CategoryEntry[]
 	}));
 }
 
-export function isKnownCategory(config: ResolvedCosmoloConfig, key: string): boolean {
-	const map = readCategoriesMap(config);
+export function isKnownCategory(_config: ResolvedCosmoloConfig, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(map, key);
 }
 
-export function getCategoryLabel(config: ResolvedCosmoloConfig, key: string): string {
-	const map = readCategoriesMap(config);
+export function getCategoryLabel(_config: ResolvedCosmoloConfig, key: string): string {
 	if (Object.prototype.hasOwnProperty.call(map, key)) return map[key].label;
-	const siteConfig = loadSiteConfig(config);
-	return siteConfig.fallbackCategoryLabel;
+	return (siteConfigData as SiteConfig).fallbackCategoryLabel;
 }
 
-export function getCategoryDescription(config: ResolvedCosmoloConfig, key: string): string {
-	const map = readCategoriesMap(config);
+export function getCategoryDescription(_config: ResolvedCosmoloConfig, key: string): string {
 	return map[key]?.description ?? '';
 }
 
-export function getCategorySlugs(config: ResolvedCosmoloConfig): string[] {
-	return [...Object.keys(readCategoriesMap(config)), 'other'];
+export function getCategorySlugs(_config: ResolvedCosmoloConfig): string[] {
+	return [...Object.keys(map), 'other'];
 }
 
-export function loadSiteConfig(config: ResolvedCosmoloConfig): SiteConfig {
-	const raw = fs.readFileSync(path.resolve(config.siteConfigPath), 'utf-8');
-	return JSON.parse(raw) as SiteConfig;
+export function loadSiteConfig(_config: ResolvedCosmoloConfig): SiteConfig {
+	return siteConfigData as SiteConfig;
 }

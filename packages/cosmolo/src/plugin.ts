@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import type { Plugin } from 'vite';
 import type { CosmoloConfig } from './types.js';
 import { resolveConfig } from './config.js';
@@ -8,9 +10,10 @@ const RESOLVED_ID = '\0cosmolo:content';
 /**
  * Vite plugin that generates the `cosmolo:content` virtual module.
  *
- * The virtual module contains `import.meta.glob` calls with the paths derived
- * from the user's CosmoloConfig. Because the glob patterns are string literals
- * inside the generated code, Vite can statically analyze them at build time.
+ * Content files are bundled via `import.meta.glob` (evaluated at build time).
+ * JSON config files (categories, site config) are inlined as object literals so
+ * the runtime code has no `fs` dependency — required for Cloudflare Workers and
+ * other serverless runtimes.
  *
  * Usage in vite.config.ts:
  *   import { cosmoloPlugin } from 'cosmolo/plugin';
@@ -19,11 +22,27 @@ const RESOLVED_ID = '\0cosmolo:content';
 export function cosmoloPlugin(userConfig: CosmoloConfig = {}): Plugin {
 	const config = resolveConfig(userConfig);
 
-	// Normalize to absolute-root-relative paths (leading slash, no trailing slash)
 	const articlesDir = '/' + config.articlesDir.replace(/^\/|\/$/g, '');
 	const pagesDir = '/' + config.pagesDir.replace(/^\/|\/$/g, '');
 
-	const virtualModuleCode = `
+	const categoriesAbsPath = path.resolve(process.cwd(), config.categoriesConfigPath);
+	const siteConfigAbsPath = path.resolve(process.cwd(), config.siteConfigPath);
+
+	return {
+		name: 'cosmolo',
+		resolveId(id) {
+			if (id === VIRTUAL_ID) return RESOLVED_ID;
+		},
+		load(id) {
+			if (id !== RESOLVED_ID) return;
+
+			this.addWatchFile(categoriesAbsPath);
+			this.addWatchFile(siteConfigAbsPath);
+
+			const categoriesData = JSON.parse(fs.readFileSync(categoriesAbsPath, 'utf-8'));
+			const siteConfigData = JSON.parse(fs.readFileSync(siteConfigAbsPath, 'utf-8'));
+
+			return `
 export const rawMdFiles = import.meta.glob(
   '${articlesDir}/*.md',
   { query: '?raw', import: 'default', eager: true }
@@ -38,15 +57,11 @@ export const rawPageFiles = import.meta.glob(
   '${pagesDir}/*.md',
   { query: '?raw', import: 'default', eager: true }
 );
-`.trim();
 
-	return {
-		name: 'cosmolo',
-		resolveId(id) {
-			if (id === VIRTUAL_ID) return RESOLVED_ID;
-		},
-		load(id) {
-			if (id === RESOLVED_ID) return virtualModuleCode;
+export const categoriesData = ${JSON.stringify(categoriesData)};
+
+export const siteConfigData = ${JSON.stringify(siteConfigData)};
+`.trim();
 		},
 	};
 }
