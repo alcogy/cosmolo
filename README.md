@@ -1,12 +1,8 @@
 # Cosmolo
 
-A SvelteKit-native Markdown CMS starter — clone it, configure it, own it.
+A SvelteKit-native content management package — add Markdown-based blogging to any SvelteKit project in minutes.
 
 **Website:** https://cosmolo.alcogy.dev
-
-Cosmolo gives you a production-ready content site scaffold built on SvelteKit,
-MDSveX, Zod-validated frontmatter, and a config-driven category system.
-No framework lock-in beyond SvelteKit.
 
 > **Name origin**: Short for *cosmologist* — a deliberate nod to Astro. Cosmolo occupies
 > a similar content-site niche but stays entirely within the SvelteKit ecosystem.
@@ -30,35 +26,31 @@ and go" story. Cosmolo is that story.
 
 **Core principles:**
 
-1. **SvelteKit all the way down** — No adapters, no bridges. Developers who know SvelteKit already know Cosmolo.
+1. **SvelteKit all the way down** — No framework switching. Developers who know SvelteKit already know Cosmolo.
 2. **Config over convention** — Site identity and taxonomy are JSON files. No source code changes needed to add a category.
 3. **Type-safe content** — Frontmatter is validated with Zod at build time. Malformed articles fail loudly during `bun build`.
 4. **MDSveX as a first-class citizen** — `.md` and `.svx` share the same routing and Zod schema; the system auto-detects which to use.
-5. **Own your code** — Cosmolo is a template, not a dependency. Once you clone it, you own every line.
+5. **Non-invasive** — Cosmolo is an npm package, not a framework. It adds content management to your existing project without owning your routes or components.
 
 ---
 
 ## Quick Start
 
 ```bash
-# 1. Use this repo as a GitHub template (click "Use this template") or clone it
-git clone https://github.com/alcogy/cosmolo my-site
-cd my-site
+# In an existing SvelteKit project:
+bun add cosmolo
 
-# 2. Install dependencies
-bun install
+# Scaffold routes and config files interactively
+bunx cosmolo init
 
-# 3. Configure your site
-#    Edit config/site.json and config/categories.json
+# Start writing content
+bun generate:article
 
-# 4. Add your first article
-#    Create src/content/articles/my-first-post.md
-
-# 5. Start the dev server
+# Run the dev server
 bun dev
 ```
 
-Open `http://localhost:5173` to see your site.
+`cosmolo init` asks two questions — which mode (full UI or server-only) and which adapter (SSG or serverless) — then copies the appropriate route files into your project.
 
 ---
 
@@ -66,15 +58,16 @@ Open `http://localhost:5173` to see your site.
 
 ### `config/site.json`
 
-Site-wide settings. Edit before deploying.
+Site-wide settings. Created by `cosmolo init`.
 
-| Field                   | Description                                   |
-|-------------------------|-----------------------------------------------|
-| `url`                   | Production URL (used in sitemap and OGP)      |
-| `name`                  | Site name shown in header and `<title>`       |
-| `description`           | Default meta description                      |
-| `twitterHandle`         | Twitter/X handle for `twitter:site` meta tag  |
+| Field | Description |
+|---|---|
+| `url` | Production URL (used in sitemap and OGP) |
+| `name` | Site name shown in header and `<title>` |
+| `description` | Default meta description |
+| `twitterHandle` | Twitter/X handle for `twitter:site` meta tag |
 | `fallbackCategoryLabel` | Label shown for the `other` fallback category |
+| `articlesPerPage` | Articles per page for pagination |
 
 ```json
 {
@@ -82,7 +75,8 @@ Site-wide settings. Edit before deploying.
   "name": "Your Site Name",
   "description": "A content site built with Cosmolo.",
   "twitterHandle": "@yourhandle",
-  "fallbackCategoryLabel": "Other"
+  "fallbackCategoryLabel": "Other",
+  "articlesPerPage": 10
 }
 ```
 
@@ -138,8 +132,7 @@ Each article page automatically shows an "Updated:" date derived from the file's
 at build time by running `git log -1` against the article file.
 
 The updated date is displayed only when it differs from the `date` field. If the file
-has never been committed (e.g. a new draft that is not yet tracked by git), the updated
-date is omitted silently.
+has never been committed, the updated date is omitted silently.
 
 > **Note:** file modification times (`mtime`) are intentionally not used. They reset on
 > `git clone`, which makes them unreliable in CI/CD environments.
@@ -147,15 +140,7 @@ date is omitted silently.
 ### Draft mode
 
 Add `draft: true` to any article's frontmatter to exclude it from build output and all listings.
-Draft articles are invisible in production but accessible during `bun dev` via their direct URL,
-so you can preview them before publishing.
-
-```yaml
----
-title: "Work in Progress"
-draft: true
----
-```
+Draft articles are invisible in production but accessible during `bun dev` via their direct URL.
 
 ### Tags
 
@@ -165,8 +150,7 @@ Articles can have multiple tags. Each tag gets a listing page at `/tags/<tag>`.
 tags: ["svelte", "tutorial"]
 ```
 
-Tag links appear as chips in the article header. Tags are case-sensitive (`Svelte` and `svelte`
-are treated as different tags). Unused tags (no articles) produce no page.
+Tags are case-sensitive. Unused tags produce no page.
 
 ### Series
 
@@ -178,12 +162,11 @@ seriesOrder: 1
 ```
 
 All articles sharing the same `series` value are linked together, sorted by `seriesOrder` ascending.
-`seriesOrder` is 1-based by convention, but any integers work.
 
 ### Manual related articles
 
 By default, the "More in this category" panel shows up to 4 articles from the same category.
-Override it by listing slugs explicitly — the specified articles replace the auto-detected ones entirely.
+Override it by listing slugs explicitly:
 
 ```yaml
 related: ["slug-a", "slug-b"]
@@ -192,8 +175,8 @@ related: ["slug-a", "slug-b"]
 ### Table of contents
 
 For `.md` articles with 2 or more `##` headings, a table of contents is automatically rendered
-above the article body. Heading levels `##` through `######` are included; indentation reflects
-the nesting depth. `.svx` articles do not get an auto-generated TOC.
+above the article body. Heading levels `##` through `######` are included. `.svx` articles do
+not get an auto-generated TOC.
 
 ### Supported file formats
 
@@ -202,7 +185,8 @@ the nesting depth. `.svx` articles do not get an auto-generated TOC.
 | `.md`     | `marked` | No                        |
 | `.svx`    | MDSveX   | Yes                       |
 
-Place files in `src/content/articles/`. The filename becomes the URL slug:
+Place files in `src/content/articles/` (or your configured `articlesDir`).
+The filename becomes the URL slug:
 
 ```
 src/content/articles/my-post.md  →  /articles/my-post
@@ -233,8 +217,6 @@ need interactive UI.
 <Callout type="warning">Watch out for this edge case.</Callout>
 ```
 
-Callout types: `info` (default) · `tip` · `warning` · `danger`
-
 ### Static Pages
 
 Place `.md` files in `src/content/pages/`. Each file is served at `/<filename>`:
@@ -253,224 +235,24 @@ title: "About"
 
 ---
 
-## Content APIs
-
-Cosmolo generates static JSON and RSS endpoints alongside your HTML pages.
-All outputs are static files — no server required.
-
-| Endpoint | Content-Type | Description |
-|---|---|---|
-| `/api/articles.json` | `application/json` | Slug + title for all non-draft articles |
-| `/api/articles/<slug>.json` | `application/json` | Full content and metadata for one article |
-| `/api/categories.json` | `application/json` | All categories as structured JSON |
-| `/rss.xml` | `application/rss+xml` | RSS 2.0 feed for feed readers |
-
-### `/api/articles.json`
-
-Index endpoint — slug and title only. Lightweight enough for any article count.
-Add fields as needed by editing `src/routes/api/articles.json/+server.ts`.
-
-```json
-{
-  "articles": [
-    { "slug": "hello-world", "title": "Hello, Cosmolo" }
-  ]
-}
-```
-
-### `/api/articles/<slug>.json`
-
-Per-article endpoint — full metadata plus the article body in the configured format.
-
-The body format is set in `config/site.json` under `api.articleBody` and applies at build time:
-
-```json
-"api": {
-  "articleBody": "html"
-}
-```
-
-| Value | `contentsFormat` | `contents` |
-|---|---|---|
-| `"html"` | `"html"` | Rendered HTML (default) |
-| `"markdown"` | `"markdown"` | Raw Markdown body (frontmatter stripped) |
-| `"plaintext"` | `"plaintext"` | Plain text — Markdown syntax stripped |
-
-The response always uses `contents` as the field name. `contentsFormat` tells you which format was used:
-
-```json
-{
-  "slug": "hello-world",
-  "title": "Hello, Cosmolo",
-  "excerpt": "A quick tour of what Cosmolo can do out of the box.",
-  "category": "tech",
-  "categoryLabel": "Technology",
-  "tags": ["svelte", "tutorial"],
-  "series": null,
-  "seriesOrder": null,
-  "date": "2025-01-01",
-  "sort": 100,
-  "related": [],
-  "contentsFormat": "html",
-  "contents": "<h2 id=\"welcome\">Welcome</h2>...",
-  "url": "https://your-site.example.com/articles/hello-world"
-}
-```
-
-> For `.svx` articles all body fields are empty strings — those are Svelte components
-> compiled at build time and cannot be serialized as HTML or Markdown.
-
-> **Note:** All API endpoints are static files served publicly. Do not include sensitive
-> or private information in article frontmatter or content if you enable these endpoints.
-
-### `/rss.xml`
-
-Standard RSS 2.0. Point feed readers at `<your-site>/rss.xml`.
-
-To add RSS autodiscovery to your layout, add this inside `<svelte:head>` in `src/routes/+layout.svelte`:
-
-```html
-<link rel="alternate" type="application/rss+xml" title="Your Site Name" href="/rss.xml" />
-```
-
----
-
-## OGP Images
-
-Cosmolo supports two OGP image modes, controlled by `ogImage.mode` in `config/site.json`.
-
-### `"static"` (default)
-
-All pages share a single `/og-image.png`. Place your image at `static/og-image.png`
-(1200×630px recommended) and you're done. No build-time overhead.
-
-```json
-"ogImage": { "mode": "static" }
-```
-
-### `"generated"`
-
-A unique 1200×630 PNG is generated for each article at build time using
-[Satori](https://github.com/vercel/satori). The images are output to `build/og/[slug].png`
-and referenced automatically in each article's `og:image` meta tag.
-
-```json
-"ogImage": { "mode": "generated" }
-```
-
-The card design shows the article title, category, and site name. To customize the layout,
-edit `src/lib/og.ts`.
-
-**Previewing locally:**
-
-```bash
-bun dev
-# then open: http://localhost:5173/og/your-article-slug.png
-```
-
----
-
-## Static Assets
-
-Replace the placeholder assets in `static/` before deploying:
-
-| File                  | Purpose                                         |
-|-----------------------|-------------------------------------------------|
-| `static/favicon.svg`  | Browser tab icon (included)                     |
-| `static/og-image.png` | Default OGP image used when mode is `"static"`  |
-| `static/robots.txt`   | Already included                                |
-
----
-
-## Architecture
-
-### Directory structure
-
-```
-packages/
-  cosmolo/             ← npm package (bun add cosmolo)
-    src/
-      plugin.ts        ← Vite plugin (virtual module generator)
-      articles.ts      ← Article parsing and listing
-      categories.ts    ← Category helpers
-      pages.ts         ← Static page parsing
-      markdown.ts      ← marked configuration
-      loaders.ts       ← SvelteKit load function factories
-      types.ts         ← Shared TypeScript types
-      config.ts        ← Config resolver with defaults
-      index.ts         ← Package entry point
-config/
-  site.json            ← Site-wide settings (URL, name, social)
-  categories.json      ← Category registry (key → label + description)
-src/
-  app.html             ← HTML shell
-  app.scss             ← Global styles (CSS custom properties, resets)
-  content/
-    articles/          ← Article files (.md or .svx)
-    pages/             ← Static pages (.md, e.g. about.md)
-  lib/
-    config.ts          ← Typed re-export of config/site.json
-    categories.ts      ← Category lookup helpers
-    articles.ts        ← Zod schema, article parsing and listing
-    markdown.ts        ← marked configuration (YouTube embed, external links)
-    og.ts              ← OGP image generation (Satori + resvg-js)
-    pages.ts           ← Static page parsing
-    components/
-      Callout.svelte   ← Styled callout box for .svx articles
-      CategoryNav.svelte ← Category navigation links
-  routes/
-    +layout.ts         ← prerender = true (global SSG)
-    +layout.svelte     ← Header, footer, global meta tags
-    +page.server.ts    ← Home: loads article list
-    +page.svelte       ← Home: article card grid with search + pagination
-    articles/[slug]/   ← Article page (.md → {@html} / .svx → <svelte:component>)
-    categories/[slug]/ ← Category listing (includes 'other' fallback)
-    tags/[tag]/        ← Tag listing page
-    (pages)/[slug]/    ← Generic static page template
-    api/articles.json/ ← Static JSON feed of all articles
-    api/categories.json/ ← Static JSON feed of all categories
-    rss.xml/           ← RSS 2.0 feed
-    sitemap.xml/       ← Auto-generated sitemap (includes tag URLs)
-    og/[slug].png/     ← Per-article OGP PNG (generated mode only)
-static/                ← Static assets (favicon, OG image, robots.txt)
-```
-
-### Content pipeline
-
-**`.md` pipeline**: `gray-matter` parses frontmatter → Zod validates → `marked` renders HTML → `{@html ...}` in template.
-
-**`.svx` pipeline**: MDSveX compiles at build time (Svelte component with `metadata` export) → Zod validates `metadata` → `<svelte:component this={Component} />` in template.
-
-Both pipelines share the same Zod frontmatter schema and appear transparently in article listings.
-
-### Fallback category (`other`)
-
-`/categories/other` aggregates articles whose `category` value doesn't match any key in
-`categories.json`. This prevents 404s when a category is removed or a frontmatter typo occurs.
-
-### Static generation
-
-`@sveltejs/adapter-static` prerenders every route. `getSlugs()` and `getCategorySlugs()`
-drive the `entries()` functions for dynamic routes, so every article and category page is
-generated at `bun build` time.
-
----
-
 ## Generators
 
-Cosmolo ships with an interactive CLI to scaffold content without touching files manually.
-
-**Template project** (`bun run …`):
+Create content files without editing them by hand:
 
 ```bash
-bun run generate            # Interactive menu (article / page / category)
-bun run generate:article    # Jump straight to article creation
-bun run generate:page       # Jump straight to page creation
-bun run generate:category   # Jump straight to category creation
+bunx cosmolo generate             # Interactive menu (article / page / category)
+bunx cosmolo generate article     # Create an article
+bunx cosmolo generate page        # Create a static page
+bunx cosmolo generate category    # Add a category to categories.json
 ```
 
-**Package** (`bun add cosmolo`): the same commands are available via the `cosmolo` binary.
-See [Content generators](#content-generators) in the Package section.
+`cosmolo init` adds convenience scripts to your `package.json` automatically, so after init you can just run:
+
+```bash
+bun generate:article
+bun generate:page
+bun generate:category
+```
 
 ### Article
 
@@ -487,72 +269,9 @@ Prompts for key (slug), label, and description. Appends the new entry to `config
 
 ---
 
-## New Project
+## Package Reference
 
-To scaffold a new Cosmolo project from scratch:
-
-```bash
-bun scripts/create-cosmolo.ts [directory]
-```
-
-Prompts for site name, URL, Twitter handle, and starter categories, then clones the Cosmolo
-template, updates the config files, and runs `bun install`.
-
----
-
-## Package (`bun add cosmolo`)
-
-In addition to the template, Cosmolo is available as an npm package for adding content
-management to an **existing SvelteKit project** without cloning the template.
-
-> **Status**: The package lives in `packages/cosmolo/` and is not yet published to npm.
-> The API is stable; publishing is pending reception evaluation.
-
-### Scaffolding with `cosmolo init`
-
-The fastest way to get started is the interactive init command, which copies all route
-files into your project:
-
-```bash
-bunx cosmolo init
-# or: npx cosmolo init
-```
-
-The command asks two questions:
-
-**1. Mode**
-
-| Mode | What gets generated |
-|---|---|
-| **A — Full** | `+page.server.ts` + `+page.svelte` for every route, plus `Pagination.svelte` |
-| **B — Slim** | `+page.server.ts` only — bring your own Svelte UI |
-
-**2. Adapter**
-
-| Adapter | Effect |
-|---|---|
-| **SSG** (`adapter-static`) | Also creates `src/routes/+layout.ts` with `export const prerender = true` |
-| **Serverless / SSR** | No layout file — routes are rendered on demand (Cloudflare Workers, Vercel, Node…) |
-
-If any target file already exists, the command lists every conflict and exits without
-writing anything. You can then remove or rename the conflicting files and re-run.
-
-**Manual prerender setup**
-
-If you chose Serverless during init but later switch to SSG, add this file:
-
-```typescript
-// src/routes/+layout.ts
-export const prerender = true;
-```
-
-Or, if you already have a `+layout.ts`, just add `export const prerender = true;` to it.
-
----
-
-### Setup
-
-**1. Install**
+### Install
 
 ```bash
 bun add cosmolo
@@ -560,22 +279,24 @@ bun add cosmolo
 bun add -D vite @sveltejs/kit
 ```
 
-**2. Create `cosmolo.config.ts`** in your project root
+### Setup
+
+**1. Create `cosmolo.config.ts`** in your project root
 
 ```typescript
 import { resolveConfig } from 'cosmolo';
 
 export default resolveConfig({
-  articlesDir: 'src/content/articles',   // default — change if needed
-  pagesDir:    'src/content/pages',
-  siteConfigPath:      'config/site.json',
-  categoriesConfigPath: 'config/categories.json',
+  articlesDir: 'src/content/articles',    // default
+  pagesDir:    'src/content/pages',       // default
+  siteConfigPath:       'config/site.json',       // default
+  categoriesConfigPath: 'config/categories.json', // default
 });
 ```
 
 All fields are optional. Omitting them uses the defaults shown above.
 
-**3. Register the Vite plugin** in `vite.config.ts`
+**2. Register the Vite plugin** in `vite.config.ts`
 
 ```typescript
 import { sveltekit } from '@sveltejs/kit/vite';
@@ -587,16 +308,53 @@ export default {
 };
 ```
 
-The plugin generates a virtual module (`cosmolo:content`) that contains
-`import.meta.glob` calls for your configured paths. This is what makes
-the content directory configurable at build time.
+The plugin generates a virtual module (`cosmolo:content`) containing `import.meta.glob`
+calls for your configured paths. All content — including `categories.json` and
+`site.json` — is bundled at build time with no `fs` access at runtime, making Cosmolo
+compatible with Cloudflare Workers and other serverless runtimes.
 
-### Using load function factories
+### Scaffolding with `cosmolo init`
 
-Replace the boilerplate in each route's `+page.server.ts` with a factory call:
+Instead of writing route files by hand, run:
+
+```bash
+bunx cosmolo init
+```
+
+The command asks two questions:
+
+**Mode**
+
+| Mode | What gets generated |
+|---|---|
+| **A — Full** | `+page.server.ts` + `+page.svelte` for every route, `sitemap.xml`, `rss.xml`, `Pagination.svelte`, `cosmolo.config.ts`, `vite.config.ts` |
+| **B — Slim** | Server routes only — bring your own Svelte UI |
+
+**Adapter**
+
+| Adapter | Effect |
+|---|---|
+| **SSG** (`adapter-static`) | Also creates `src/routes/+layout.ts` with `export const prerender = true` |
+| **Serverless / SSR** | No layout file — routes render on demand |
+
+If any target file already exists, the command lists every conflict and exits without
+writing anything.
+
+**Manual prerender setup**
+
+If you chose Serverless but later switch to SSG, add this file:
 
 ```typescript
-// src/routes/+page.server.ts  (article listing)
+// src/routes/+layout.ts
+export const prerender = true;
+```
+
+### Load function factories
+
+`+page.server.ts` files can use factory functions instead of writing load boilerplate:
+
+```typescript
+// src/routes/+page.server.ts
 import { createArticlesLoader } from 'cosmolo';
 import config from '../../cosmolo.config';
 export const load = createArticlesLoader(config);
@@ -626,8 +384,7 @@ export const entries = createTagEntries(config);
 export const load = createTagLoader(config);
 ```
 
-For the article loader, you can pass a `getUpdatedAt` option to wire up
-git-based updated dates:
+For git-based updated dates on the article loader:
 
 ```typescript
 import { execSync } from 'child_process';
@@ -635,12 +392,33 @@ import { execSync } from 'child_process';
 export const load = createArticleLoader(config, {
   getUpdatedAt(slug) {
     try {
-      return execSync(`git log -1 --format=%cI -- "src/content/articles/${slug}.md"`, {
-        encoding: 'utf-8',
-      }).trim().split('T')[0];
+      return execSync(
+        `git log -1 --format=%cI -- "src/content/articles/${slug}.md"`,
+        { encoding: 'utf-8' }
+      ).trim().split('T')[0];
     } catch { return ''; }
   },
 });
+```
+
+### Using helpers in Svelte components
+
+Category labels and SVX components are safe to use directly in `.svelte` files:
+
+```svelte
+<script lang="ts">
+  import { getCategoryLabel, getSvxComponent } from 'cosmolo';
+  import config from '../../../../cosmolo.config';
+  import type { Component } from 'svelte';
+
+  const { data } = $props();
+
+  // Category label (works client-side — no fs at runtime)
+  const label = getCategoryLabel(config, data.article.category);
+
+  // SVX component for .svx articles (undefined for .md)
+  const SvxComponent = getSvxComponent(config, data.article.slug) as Component | undefined;
+</script>
 ```
 
 ### Package exports
@@ -655,60 +433,27 @@ Key exports from `cosmolo`:
 | Export | Description |
 |---|---|
 | `resolveConfig(config?)` | Merge user config with defaults |
-| `getArticles(config)` | All non-draft articles |
-| `getArticle(config, slug)` | Single article with HTML + TOC |
+| `getArticles(config)` | All non-draft articles, sorted |
+| `getArticle(config, slug)` | Single article with rendered HTML + TOC |
 | `getArticlesByTag(config, tag)` | Articles filtered by tag |
-| `getArticlesBySeries(config, series)` | Articles in a series |
-| `getSvxComponent(config, slug)` | Returns the Svelte component for an `.svx` article (safe in Svelte components) |
-| `getCategoryLabel(config, key)` | Category label by key — works in Svelte components (no `fs` at runtime) |
+| `getArticlesBySeries(config, series)` | Articles in a series, sorted by `seriesOrder` |
+| `getSlugs(config)` | All non-draft article slugs |
+| `getTags(config)` | All tags across all articles |
+| `getSvxComponent(config, slug)` | Svelte component for an `.svx` article (client-safe) |
+| `getCategoryLabel(config, key)` | Category label by key (client-safe) |
 | `getAllCategories(config)` | All category entries |
 | `loadSiteConfig(config)` | Site configuration object |
+| `getPage(config, slug)` | Single static page with rendered HTML |
+| `getPageSlugs(config)` | All static page slugs |
 | `createArticlesLoader(config)` | Load factory for article listings |
 | `createArticleLoader(config, opts?)` | Load factory for single article |
 | `createCategoryLoader(config)` | Load factory for category pages |
 | `createTagLoader(config)` | Load factory for tag pages |
 | `createPageLoader(config)` | Load factory for static pages |
-
-### Content generators
-
-The `cosmolo` binary includes the same generator commands as the template's `bun run generate:*` scripts.
-
-```bash
-bunx cosmolo generate             # Interactive menu
-bunx cosmolo generate article     # Create an article
-bunx cosmolo generate page        # Create a static page
-bunx cosmolo generate category    # Add a category
-```
-
-`cosmolo init` automatically adds convenience scripts to your `package.json`:
-
-```json
-{
-  "scripts": {
-    "generate:article":  "cosmolo generate article",
-    "generate:page":     "cosmolo generate page",
-    "generate:category": "cosmolo generate category"
-  }
-}
-```
-
-After that you can run `bun generate:article` (or `npm run generate:article`) directly.
-
-The generator reads `cosmolo.config.ts` at the project root to determine where to write
-files. If the config file is not found it falls back to the default paths.
-
----
-
-## Development Commands
-
-```bash
-bun dev       # Start dev server at http://localhost:5173
-bun build     # Build static output to build/
-bun preview   # Preview the production build
-bun check     # TypeScript type-check
-bun lint      # Run Prettier + ESLint checks
-bun format    # Auto-format all files
-```
+| `createArticleEntries(config)` | `entries()` generator for article routes |
+| `createCategoryEntries(config)` | `entries()` generator for category routes |
+| `createTagEntries(config)` | `entries()` generator for tag routes |
+| `createPageEntries(config)` | `entries()` generator for page routes |
 
 ---
 
@@ -716,28 +461,22 @@ bun format    # Auto-format all files
 
 ### SSG vs Serverless
 
-The Cosmolo **template** uses `@sveltejs/adapter-static` (SSG) and outputs a `build/`
-directory of static HTML/CSS/JS.
-
-When using the **`cosmolo` package** in an existing SvelteKit project you can choose any
-adapter. All content loading happens at build time via `import.meta.glob` (articles,
-pages) and the Vite plugin (JSON config), so there are no `fs` calls at runtime.
-This makes Cosmolo compatible with Cloudflare Workers, Vercel Edge, and any other
-serverless runtime.
+All content loading happens at build time via `import.meta.glob` and the Vite plugin,
+so there are no `fs` calls at runtime. Cosmolo works with any SvelteKit adapter.
 
 | Adapter | Notes |
 |---|---|
-| `@sveltejs/adapter-static` | Full SSG — set `prerender = true` globally. `cosmolo init` does this automatically. |
-| `@sveltejs/adapter-cloudflare` | Cloudflare Workers / Pages (SSR). No prerender config needed. |
-| `@sveltejs/adapter-vercel` | Vercel Edge / Node. No prerender config needed. |
-| `@sveltejs/adapter-node` | Self-hosted Node server. No prerender config needed. |
+| `@sveltejs/adapter-static` | Full SSG — `cosmolo init` sets `prerender = true` automatically for SSG mode |
+| `@sveltejs/adapter-cloudflare` | Cloudflare Workers / Pages (SSR). No extra config needed. |
+| `@sveltejs/adapter-vercel` | Vercel Edge / Node. No extra config needed. |
+| `@sveltejs/adapter-node` | Self-hosted Node server. No extra config needed. |
 
 ### Cloudflare Pages (SSG)
 
 Cloudflare Pages offers a free tier with global CDN, automatic HTTPS, and Git-based
-deployments. It is the recommended hosting option for Cosmolo.
+deployments.
 
-**1. Push your repo to GitHub** (if you haven't already).
+**1. Push your repo to GitHub.**
 
 **2. Create a new Pages project**
 
@@ -760,8 +499,7 @@ deployments. It is the recommended hosting option for Cosmolo.
 **4. Deploy**
 
 Click **Save and Deploy**. Cloudflare pulls your code, runs the build, and publishes
-the `build/` directory to their global edge network. Subsequent pushes to the default
-branch trigger automatic redeployments.
+the `build/` directory to their global edge network.
 
 **Custom domain**
 
@@ -784,10 +522,18 @@ bunx netlify deploy --prod --dir build
 
 Or connect via the Netlify dashboard. Build command: `bun run build`. Publish directory: `build`.
 
-### Apache / Nginx (self-hosted)
+---
 
-Upload the contents of `build/` to your web root. Cosmolo generates clean static HTML,
-so no URL rewriting rules are required for basic use.
+## Development Commands
+
+```bash
+bun dev       # Start dev server at http://localhost:5173
+bun build     # Build output
+bun preview   # Preview the production build
+bun check     # TypeScript type-check
+bun lint      # Run Prettier + ESLint checks
+bun format    # Auto-format all files
+```
 
 ---
 
