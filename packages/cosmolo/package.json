@@ -23,6 +23,7 @@
 	],
 	"scripts": {
 		"build": "tsc && cp src/virtual.d.ts dist/virtual.d.ts && chmod +x dist/cli/index.js",
+		"test": "bun test src/**/*.test.ts",
 		"prepublishOnly": "npm run build"
 	},
 	"dependencies": {
