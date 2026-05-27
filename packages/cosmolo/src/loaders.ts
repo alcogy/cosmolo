@@ -1,5 +1,5 @@
 import { getArticle, getArticles, getArticlesByCategory, getArticlesBySeries, getArticlesByTag, getSlugs, getTags } from './articles.js';
-import { getCategorySlugs, getCategoryLabel, getCategoryDescription } from './categories.js';
+import { getCategorySlugs, getCategoryLabel, getCategoryDescription, loadSiteConfig } from './categories.js';
 import { getPage, getPageSlugs } from './pages.js';
 import type { Article, ResolvedCosmoloConfig } from './types.js';
 
@@ -13,7 +13,10 @@ import type { Article, ResolvedCosmoloConfig } from './types.js';
  * export const load = createArticlesLoader(config);
  */
 export function createArticlesLoader(config: ResolvedCosmoloConfig) {
-	return () => ({ articles: getArticles(config) });
+	return () => ({
+		articles: getArticles(config),
+		articlesPerPage: loadSiteConfig(config).articlesPerPage,
+	});
 }
 
 /**
@@ -79,6 +82,7 @@ export function createCategoryLoader(config: ResolvedCosmoloConfig) {
 			label: getCategoryLabel(config, slug),
 			description: getCategoryDescription(config, slug),
 			articles: getArticlesByCategory(config, slug),
+			articlesPerPage: loadSiteConfig(config).articlesPerPage,
 		};
 	};
 }
@@ -97,6 +101,7 @@ export function createTagLoader(config: ResolvedCosmoloConfig) {
 	return ({ params }: { params: { tag: string } }) => ({
 		tag: params.tag,
 		articles: getArticlesByTag(config, params.tag),
+		articlesPerPage: loadSiteConfig(config).articlesPerPage,
 	});
 }
 

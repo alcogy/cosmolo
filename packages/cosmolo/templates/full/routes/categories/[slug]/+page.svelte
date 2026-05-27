@@ -4,7 +4,7 @@
 
 	const { data }: { data: PageData } = $props();
 
-	const perPage = 10;
+	const perPage = data.articlesPerPage;
 	let currentPage = $state(1);
 
 	$effect(() => {
