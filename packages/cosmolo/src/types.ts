@@ -61,5 +61,4 @@ export interface SiteConfig {
 	fallbackCategoryLabel: string;
 	articlesPerPage: number;
 	ogImage: { mode: 'static' | 'generated' };
-	api: { articleBody: 'html' | 'markdown' | 'plaintext' };
 }

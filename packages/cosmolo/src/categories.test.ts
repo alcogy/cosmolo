@@ -17,7 +17,6 @@ mock.module('cosmolo:content', () => ({
 		fallbackCategoryLabel: 'Other',
 		articlesPerPage: 10,
 		ogImage: { mode: 'static' },
-		api: { articleBody: 'html' },
 	},
 }));
 

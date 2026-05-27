@@ -5,6 +5,5 @@
 	"twitterHandle": "@yourhandle",
 	"fallbackCategoryLabel": "Other",
 	"articlesPerPage": 10,
-	"ogImage": { "mode": "static" },
-	"api": { "articleBody": "html" }
+	"ogImage": { "mode": "static" }
 }
