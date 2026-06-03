@@ -49,8 +49,11 @@ export async function executeSqlDirect(config: ResolvedCosmoloConfig): Promise<v
 		return;
 	}
 
-	// bun:sqlite is available in all bun runtimes
-	const { Database } = await import('bun:sqlite' as string);
+	// bun:sqlite is a bun built-in; the 'bun:' scheme is not a standard ESM URL
+	// so we suppress the TypeScript module resolution error here.
+	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+	// @ts-ignore
+	const { Database } = await import('bun:sqlite');
 	const db = new Database(dbPath);
 
 	try {

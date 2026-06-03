@@ -22,14 +22,26 @@ export function buildCategoriesInserts(categoriesPath: string): string[] {
 	});
 }
 
+function collectArticleFiles(dir: string, baseDir: string): { filePath: string; slug: string }[] {
+	const results: { filePath: string; slug: string }[] = [];
+	for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+		const fullPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			results.push(...collectArticleFiles(fullPath, baseDir));
+		} else if (/\.(md|svx)$/.test(entry.name)) {
+			const rel = path.relative(baseDir, fullPath).replace(/\.(md|svx)$/, '');
+			// Normalize path separators to forward slashes for slug
+			results.push({ filePath: fullPath, slug: rel.replace(/\\/g, '/') });
+		}
+	}
+	return results;
+}
+
 export function buildArticlesInserts(articlesDir: string): string[] {
 	if (!fs.existsSync(articlesDir)) return [];
-	const files = fs.readdirSync(articlesDir).filter((f) => /\.(md|svx)$/.test(f));
-	return files.map((file) => {
-		const filePath = path.join(articlesDir, file);
+	return collectArticleFiles(articlesDir, articlesDir).map(({ filePath, slug }) => {
 		const raw = fs.readFileSync(filePath, 'utf-8');
 		const { data, content } = matter(raw);
-		const slug = file.replace(/\.(md|svx)$/, '');
 
 		const dateVal =
 			data.date instanceof Date

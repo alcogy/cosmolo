@@ -106,4 +106,17 @@ describe('buildArticlesInserts', () => {
 		const inserts = buildArticlesInserts(articlesDir);
 		expect(inserts).toHaveLength(1);
 	});
+
+	test('collects articles from subdirectories', () => {
+		const articlesDir = path.join(tmpDir, 'articles-nested');
+		fs.mkdirSync(path.join(articlesDir, '2024'), { recursive: true });
+		fs.writeFileSync(
+			path.join(articlesDir, '2024', 'nested-post.md'),
+			['---', 'title: Nested', 'category: x', 'excerpt: e', '---', 'body'].join('\n')
+		);
+
+		const inserts = buildArticlesInserts(articlesDir);
+		expect(inserts).toHaveLength(1);
+		expect(inserts[0]).toContain("'2024/nested-post'");
+	});
 });

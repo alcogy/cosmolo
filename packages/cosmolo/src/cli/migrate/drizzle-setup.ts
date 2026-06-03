@@ -63,7 +63,11 @@ export function createDb(d1: D1Database) {
 }
 
 export async function getArticles(d1: D1Database) {
-  return createDb(d1).select().from(articles).orderBy(desc(articles.sort));
+  return createDb(d1)
+    .select()
+    .from(articles)
+    .where(eq(articles.draft, 0))
+    .orderBy(desc(articles.sort));
 }
 
 export async function getArticle(d1: D1Database, slug: string) {
@@ -131,12 +135,7 @@ function generateDrizzleConfig(): string {
 export default {
   schema: './drizzle/schema.ts',
   out: './drizzle/migrations',
-  driver: 'd1-http',
-  dbCredentials: {
-    accountId: process.env.CLOUDFLARE_ACCOUNT_ID!,
-    databaseId: process.env.CLOUDFLARE_DATABASE_ID!,
-    token: process.env.CLOUDFLARE_D1_TOKEN!,
-  },
+  dialect: 'sqlite',
 } satisfies Config;
 `;
 }
@@ -168,7 +167,7 @@ function updateWranglerToml(root: string, dbName: string): 'created' | 'appended
 	}
 	const minimal =
 		`name = "cosmolo-site"\n` +
-		`compatibility_date = "2024-01-01"\n` +
+		`compatibility_date = "2025-01-01"\n` +
 		d1Section(dbName);
 	fs.writeFileSync(wranglerPath, minimal);
 	return 'created';
@@ -234,6 +233,17 @@ async function preflight(
 		if (!ok) return null;
 	}
 
+	// src/lib/db/ CRUD files exist?
+	const dbDir = path.join(root, 'src', 'lib', 'db');
+	const crudFiles = ['articles.ts', 'categories.ts'].filter((f) =>
+		fs.existsSync(path.join(dbDir, f))
+	);
+	if (crudFiles.length > 0) {
+		console.log(`  Warning: src/lib/db/${crudFiles.join(', ')} already exist.`);
+		const ok = await confirm(rl, 'Overwrite CRUD files?');
+		if (!ok) return null;
+	}
+
 	// D1 database name
 	const dbName = await ask(rl, 'D1 database name', 'cosmolo');
 
@@ -294,7 +304,9 @@ export async function drizzleSetup(_config: ResolvedCosmoloConfig): Promise<void
 	console.log(`       bunx cosmolo migrate:db  → choose Option 1 to export SQL`);
 	console.log(`       bunx wrangler d1 execute ${dbName} --local --file=cosmolo-migration/002_seed_categories.sql`);
 	console.log(`       bunx wrangler d1 execute ${dbName} --local --file=cosmolo-migration/003_seed_articles.sql\n`);
-	console.log(`  5. Add D1Database to src/app.d.ts:`);
+	console.log(`  5. Install Cloudflare Workers types for TypeScript:`);
+	console.log(`       bun add -d @cloudflare/workers-types\n`);
+	console.log(`  6. Add D1Database to src/app.d.ts:`);
 	console.log(`       interface Platform { env: { DB: D1Database } }`);
 	console.log(`\n  See docs/DB_MIGRATION.md for full details.`);
 }
