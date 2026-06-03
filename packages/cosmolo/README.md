@@ -24,6 +24,7 @@ a canonical "just add Markdown and go" story without asking you to leave.
 | Component in Markdown | Yes (.svx) | Yes (.mdx) | Yes | No |
 | Config-driven categories | Yes | No | No | No |
 | Headless CMS (JSON API) | Yes | Manual | Manual | Manual |
+| DB migration path | `migrate:db` | No | No | Manual |
 | Learning curve | SvelteKit only | Astro concepts | Vue + Nuxt | SvelteKit only |
 
 **Core principles:**
@@ -269,6 +270,71 @@ Prompts for title and slug. Creates `src/content/pages/<slug>.md`.
 ### Category
 
 Prompts for key (slug), label, and description. Appends the new entry to `config/categories.json`.
+
+---
+
+## Database Migration
+
+When a file-based Cosmolo site outgrows Markdown — multiple writers, mobile editing,
+a growing team — `migrate:db` converts your content to a database without rewriting
+your application code.
+
+DB support is optional. File-based sites continue to work exactly as before.
+Migration is a one-time operation when you're ready to scale.
+
+```bash
+bunx cosmolo migrate:db
+```
+
+The command is interactive and offers three paths:
+
+| Option | Description |
+|---|---|
+| **1 — Export SQL files** | Generates `cosmolo-migration/*.sql` (CREATE TABLE + INSERT for all articles and categories). Works with any relational database. |
+| **2 — Execute directly** | Executes the same SQL against a local SQLite database. Set `DATABASE_URL=./mysite.db` before running. |
+| **3 — Drizzle + Cloudflare D1** | Full setup: generates Drizzle schema, CRUD helpers, `wrangler.toml` D1 binding, and `drizzle.config.ts`. Runs preflight checks before writing anything. |
+
+### What gets migrated
+
+- **Articles** — all frontmatter fields plus the raw Markdown body. Subdirectory-organized files (e.g. `articles/2024/post.md`) are handled automatically; the slug becomes `2024/post`.
+- **Categories** — from `config/categories.json`
+- **Draft articles** — included in the DB with `draft = 1`; the generated `getArticles()` helper filters them out automatically
+
+### Option 3 — Drizzle + Cloudflare D1
+
+After a preflight check (drizzle installed, wrangler.toml, table conflicts), the following files are generated:
+
+```
+drizzle/schema.ts            ← Drizzle schema for articles and categories tables
+src/lib/db/articles.ts       ← getArticles, getArticle, createArticle, updateArticle, deleteArticle
+src/lib/db/categories.ts     ← getCategories, getCategory, createCategory, updateCategory, deleteCategory
+wrangler.toml                ← [[d1_databases]] binding added (merged if file exists)
+drizzle.config.ts            ← drizzle-kit config (dialect: sqlite)
+.dev.vars.example            ← Cloudflare environment variable reference
+```
+
+The command prints step-by-step instructions after generation:
+1. `bunx wrangler d1 create <db-name>` and copy the `database_id` into `wrangler.toml`
+2. `bunx drizzle-kit generate` to create SQL migration files
+3. `bunx wrangler d1 migrations apply <db-name> --local` to apply locally
+4. Run Option 1 to export seed SQL, then `wrangler d1 execute` to import your articles
+5. `bun add -d @cloudflare/workers-types` for TypeScript support
+6. Add `interface Platform { env: { DB: D1Database } }` to `src/app.d.ts`
+
+### SSR requirement
+
+DB-backed content requires a server-capable adapter. Content in D1 is resolved at
+request time, so `adapter-static` (SSG) is not compatible.
+
+Switch to `adapter-cloudflare` for Cloudflare Pages, or `adapter-node` for a
+self-hosted server:
+
+```diff
+- import adapter from '@sveltejs/adapter-static';
++ import adapter from '@sveltejs/adapter-cloudflare';
+```
+
+The upside: content edits take effect immediately — no rebuild or redeploy needed.
 
 ---
 
