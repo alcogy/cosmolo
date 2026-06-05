@@ -42,7 +42,23 @@ function destPath(relativePath: string, projectRoot: string): string {
 	return path.join(projectRoot, mapped);
 }
 
-function injectPackageScripts(projectRoot: string): void {
+function readProjectName(projectRoot: string): string {
+	const pkgPath = path.join(projectRoot, 'package.json');
+	if (fs.existsSync(pkgPath)) {
+		try {
+			const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+			if (typeof pkg.name === 'string' && pkg.name) return pkg.name;
+		} catch {
+			// fall through
+		}
+	}
+	return 'my-cosmolo-site';
+}
+
+function injectPackageScripts(
+	projectRoot: string,
+	adapter: 'ssg' | 'cloudflare' | 'serverless'
+): void {
 	const pkgPath = path.join(projectRoot, 'package.json');
 	if (!fs.existsSync(pkgPath)) return;
 
@@ -56,6 +72,9 @@ function injectPackageScripts(projectRoot: string): void {
 		'generate:page':     'cosmolo generate page',
 		'generate:category': 'cosmolo generate category',
 	};
+	if (adapter === 'cloudflare') {
+		scripts['deploy'] = 'bun run build && bunx wrangler pages deploy .svelte-kit/cloudflare';
+	}
 	for (const [key, val] of Object.entries(scripts)) {
 		if (!pkg.scripts[key]) {
 			pkg.scripts[key] = val;
@@ -72,6 +91,46 @@ function injectPackageScripts(projectRoot: string): void {
 		fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, '\t') + '\n');
 		console.log('  updated  package.json (added cosmolo dependency + generate:* scripts)');
 	}
+}
+
+function svelteConfigContent(adapter: 'ssg' | 'cloudflare'): string {
+	const pkg = adapter === 'ssg' ? '@sveltejs/adapter-static' : '@sveltejs/adapter-cloudflare';
+	return (
+		`import adapter from '${pkg}';\n` +
+		`import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';\n\n` +
+		`/** @type {import('@sveltejs/kit').Config} */\n` +
+		`const config = {\n` +
+		`\tpreprocess: vitePreprocess(),\n` +
+		`\tkit: {\n` +
+		`\t\tadapter: adapter(),\n` +
+		`\t},\n` +
+		`};\n\n` +
+		`export default config;\n`
+	);
+}
+
+function githubActionsContent(projectName: string): string {
+	return (
+		`name: Deploy to Cloudflare Pages\n\n` +
+		`on:\n` +
+		`  push:\n` +
+		`    branches: [main]\n\n` +
+		`jobs:\n` +
+		`  deploy:\n` +
+		`    runs-on: ubuntu-latest\n` +
+		`    permissions:\n` +
+		`      contents: read\n` +
+		`      deployments: write\n` +
+		`    steps:\n` +
+		`      - uses: actions/checkout@v4\n` +
+		`      - uses: oven-sh/setup-bun@v2\n` +
+		`      - run: bun install --frozen-lockfile\n` +
+		`      - run: bun run build\n` +
+		`      - uses: cloudflare/wrangler-action@v3\n` +
+		`        with:\n` +
+		`          apiToken: \${{ secrets.CF_API_TOKEN }}\n` +
+		`          command: pages deploy .svelte-kit/cloudflare --project-name=${projectName}\n`
+	);
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────────
@@ -96,15 +155,17 @@ export async function main(): Promise<void> {
 
 	// ── Adapter selection ───────────────────────────────────────────────────
 	console.log('\nChoose your deployment adapter:\n');
-	console.log('  1) SSG              — @sveltejs/adapter-static (Cloudflare Pages static, GitHub Pages, etc.)');
-	console.log('  2) Serverless/SSR   — Cloudflare Workers, Vercel, Node, etc.\n');
+	console.log('  1) SSG         — @sveltejs/adapter-static (GitHub Pages, Cloudflare Pages static, etc.)');
+	console.log('  2) Cloudflare  — @sveltejs/adapter-cloudflare (Workers / Pages SSR)');
+	console.log('  3) Serverless  — Vercel, Node, etc.\n');
 
 	let adapterRaw = '';
-	while (!['1', '2'].includes(adapterRaw)) {
-		adapterRaw = (await ask(rl, 'Adapter [1/2]: ')).trim();
-		if (!['1', '2'].includes(adapterRaw)) console.log('  Please enter 1 or 2.');
+	while (!['1', '2', '3'].includes(adapterRaw)) {
+		adapterRaw = (await ask(rl, 'Adapter [1/2/3]: ')).trim();
+		if (!['1', '2', '3'].includes(adapterRaw)) console.log('  Please enter 1, 2, or 3.');
 	}
-	const isSSG = adapterRaw === '1';
+	const adapter: 'ssg' | 'cloudflare' | 'serverless' =
+		adapterRaw === '1' ? 'ssg' : adapterRaw === '2' ? 'cloudflare' : 'serverless';
 
 	// ── Collect files ───────────────────────────────────────────────────────
 	const sharedFiles = collectFiles(path.join(TEMPLATE_DIR, 'shared'));
@@ -118,6 +179,18 @@ export async function main(): Promise<void> {
 	const layoutTsPath = path.join(PROJECT_ROOT, 'src/routes/+layout.ts');
 	const layoutTsContent = 'export const prerender = true;\n';
 
+	const wranglerTomlPath = path.join(PROJECT_ROOT, 'wrangler.toml');
+	const appDtsPath = path.join(PROJECT_ROOT, 'src/app.d.ts');
+	const svelteConfigPath = path.join(PROJECT_ROOT, 'svelte.config.js');
+	const ghaWorkflowPath = path.join(PROJECT_ROOT, '.github', 'workflows', 'deploy.yml');
+
+	// ── GitHub Actions prompt (Cloudflare only, before conflict detection) ──
+	let generateGha = false;
+	if (adapter === 'cloudflare') {
+		const ans = (await ask(rl, '\nGenerate GitHub Actions deploy workflow? [y/N]: ')).toLowerCase();
+		generateGha = ans === 'y';
+	}
+
 	// ── Conflict detection ──────────────────────────────────────────────────
 	const conflicts: string[] = [];
 
@@ -125,8 +198,15 @@ export async function main(): Promise<void> {
 		const dest = destPath(rel, PROJECT_ROOT);
 		if (fs.existsSync(dest)) conflicts.push(path.relative(PROJECT_ROOT, dest));
 	}
-	if (isSSG && fs.existsSync(layoutTsPath)) {
-		conflicts.push(path.relative(PROJECT_ROOT, layoutTsPath));
+	if (adapter === 'ssg') {
+		if (fs.existsSync(layoutTsPath)) conflicts.push(path.relative(PROJECT_ROOT, layoutTsPath));
+		if (fs.existsSync(svelteConfigPath)) conflicts.push('svelte.config.js');
+	}
+	if (adapter === 'cloudflare') {
+		if (fs.existsSync(wranglerTomlPath)) conflicts.push('wrangler.toml');
+		if (fs.existsSync(appDtsPath)) conflicts.push('src/app.d.ts');
+		if (fs.existsSync(svelteConfigPath)) conflicts.push('svelte.config.js');
+		if (generateGha && fs.existsSync(ghaWorkflowPath)) conflicts.push('.github/workflows/deploy.yml');
 	}
 
 	if (conflicts.length > 0) {
@@ -155,27 +235,103 @@ export async function main(): Promise<void> {
 		console.log(`  created  ${path.relative(PROJECT_ROOT, dest)}`);
 	}
 
-	if (isSSG) {
+	if (adapter === 'ssg') {
 		writeFile(layoutTsPath, layoutTsContent);
 		console.log(`  created  src/routes/+layout.ts`);
+		writeFile(svelteConfigPath, svelteConfigContent('ssg'));
+		console.log(`  created  svelte.config.js`);
 	}
 
-	injectPackageScripts(PROJECT_ROOT);
+	if (adapter === 'cloudflare') {
+		writeFile(svelteConfigPath, svelteConfigContent('cloudflare'));
+		console.log(`  created  svelte.config.js`);
+
+		const projectName = readProjectName(PROJECT_ROOT);
+		const wranglerToml = [
+			`name = "${projectName}"`,
+			`compatibility_date = "${new Date().toISOString().slice(0, 10)}"`,
+			`compatibility_flags = ["nodejs_compat"]`,
+			``,
+			`# Uncomment to add Cloudflare D1 (run: bunx cosmolo migrate:db)`,
+			`# [[d1_databases]]`,
+			`# binding = "DB"`,
+			`# database_name = "${projectName}-db"`,
+			`# database_id   = ""  # fill in after: bunx wrangler d1 create ${projectName}-db`,
+		].join('\n') + '\n';
+		writeFile(wranglerTomlPath, wranglerToml);
+		console.log(`  created  wrangler.toml`);
+
+		const appDts = [
+			`// See https://svelte.dev/docs/kit/types#app.d.ts`,
+			`// Install @cloudflare/workers-types for full type support:`,
+			`//   bun add -D @cloudflare/workers-types`,
+			`declare global {`,
+			`\tnamespace App {`,
+			`\t\tinterface Platform {`,
+			`\t\t\tenv: Env;`,
+			`\t\t\tcf: CfProperties;`,
+			`\t\t\tctx: ExecutionContext;`,
+			`\t\t}`,
+			`\t}`,
+			`}`,
+			``,
+			`export {};`,
+		].join('\n') + '\n';
+		writeFile(appDtsPath, appDts);
+		console.log(`  created  src/app.d.ts`);
+
+		if (generateGha) {
+			writeFile(ghaWorkflowPath, githubActionsContent(projectName));
+			console.log(`  created  .github/workflows/deploy.yml`);
+		}
+	}
+
+	injectPackageScripts(PROJECT_ROOT, adapter);
 
 	// ── Next steps ──────────────────────────────────────────────────────────
 	console.log('\nDone! Next steps:\n');
 	console.log('  1. Run:              bun install');
-	if (isSSG) {
+	if (adapter === 'ssg') {
 		console.log('  2. Install adapter:  bun add -D @sveltejs/adapter-static');
+		if (mode === 'full') {
+			console.log('  3. Install sass:     bun add -D sass  (SCSS used in Svelte templates)');
+			console.log('  4. Run:              bun dev');
+		} else {
+			console.log('  3. Add your own +page.svelte files for each route.');
+			console.log('  4. Run:              bun dev');
+		}
+	} else if (adapter === 'cloudflare') {
+		console.log('  2. Install adapter:  bun add -D @sveltejs/adapter-cloudflare');
+		console.log('  3. Install types:    bun add -D @cloudflare/workers-types');
+		if (generateGha) {
+			console.log('  4. Add secret to GitHub repo:  CF_API_TOKEN  (Cloudflare API token)');
+			if (mode === 'full') {
+				console.log('  5. Install sass:     bun add -D sass  (SCSS used in Svelte templates)');
+				console.log('  6. Push to main — GitHub Actions will build and deploy automatically.');
+			} else {
+				console.log('  5. Add your own +page.svelte files for each route.');
+				console.log('  6. Push to main — GitHub Actions will build and deploy automatically.');
+			}
+		} else {
+			if (mode === 'full') {
+				console.log('  4. Install sass:     bun add -D sass  (SCSS used in Svelte templates)');
+				console.log('  5. Run:              bunx wrangler dev  (or bun dev for local Vite)');
+				console.log('  6. Deploy:           bun run deploy');
+			} else {
+				console.log('  4. Add your own +page.svelte files for each route.');
+				console.log('  5. Run:              bunx wrangler dev  (or bun dev for local Vite)');
+				console.log('  6. Deploy:           bun run deploy');
+			}
+		}
 	} else {
-		console.log('  2. Install adapter:  bun add -D @sveltejs/adapter-cloudflare  (or your adapter)');
-	}
-	if (mode === 'full') {
-		console.log('  3. Install sass:     bun add -D sass  (SCSS used in Svelte templates)');
-		console.log('  4. Run:              bun dev');
-	} else {
-		console.log('  3. Add your own +page.svelte files for each route.');
-		console.log('  4. Run:              bun dev');
+		console.log('  2. Install adapter:  bun add -D @sveltejs/adapter-vercel  (or your adapter)');
+		if (mode === 'full') {
+			console.log('  3. Install sass:     bun add -D sass  (SCSS used in Svelte templates)');
+			console.log('  4. Run:              bun dev');
+		} else {
+			console.log('  3. Add your own +page.svelte files for each route.');
+			console.log('  4. Run:              bun dev');
+		}
 	}
 	console.log('\n  See https://github.com/alcogy/cosmolo for full documentation.\n');
 }

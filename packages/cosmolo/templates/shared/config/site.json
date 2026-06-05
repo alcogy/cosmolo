@@ -4,6 +4,5 @@
 	"description": "A content site built with Cosmolo.",
 	"twitterHandle": "@yourhandle",
 	"fallbackCategoryLabel": "Other",
-	"articlesPerPage": 10,
-	"ogImage": { "mode": "static" }
+	"articlesPerPage": 10
 }

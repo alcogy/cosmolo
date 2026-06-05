@@ -273,6 +273,49 @@ Prompts for key (slug), label, and description. Appends the new entry to `config
 
 ---
 
+## Cloudflare
+
+Cosmolo works with any SvelteKit-compatible deployment platform, but it is purpose-built
+around the Cloudflare stack. SvelteKit and Cloudflare Workers are an unusually good fit —
+edge-native rendering, zero cold starts, globally distributed infrastructure, and a generous
+free tier. Cosmolo's CLI removes the usual setup friction so you can go from `init` to
+deployed in minutes.
+
+### One-command Cloudflare setup
+
+```bash
+bunx cosmolo init   # choose "Cloudflare" when prompted for adapter
+```
+
+This single command generates everything needed to deploy:
+
+| Generated file | Purpose |
+|---|---|
+| `svelte.config.js` | Pre-configured with `adapter-cloudflare` |
+| `wrangler.toml` | Project name, `nodejs_compat`, D1 template commented out |
+| `src/app.d.ts` | `App.Platform` with `Env`, `CfProperties`, `ExecutionContext` |
+| `.github/workflows/deploy.yml` | Optional — push-to-`main` deploy via `wrangler-action` |
+
+After init, two commands to go live:
+
+```bash
+bun install && bun add -D @sveltejs/adapter-cloudflare @cloudflare/workers-types
+bun run deploy   # bun run build + wrangler pages deploy
+```
+
+If you opted in to GitHub Actions during init, pushing to `main` triggers the deploy automatically.
+
+### Cloudflare services
+
+| Command | What it sets up |
+|---|---|
+| `cosmolo migrate:db` → option 3 | **D1** — Drizzle schema, CRUD helpers (`getArticlesByCategory`, `getArticlesByTag`, …), D1-backed `+page.server.ts` route files |
+| `cosmolo setup:r2` | **R2** — `wrangler.toml` binding, `src/lib/r2.ts` helper, `/assets/[...key]` edge serving route |
+
+Each command is self-contained — run only the ones you need.
+
+---
+
 ## Database Migration
 
 When a file-based Cosmolo site outgrows Markdown — multiple writers, mobile editing,
@@ -305,12 +348,22 @@ The command is interactive and offers three paths:
 After a preflight check (drizzle installed, wrangler.toml, table conflicts), the following files are generated:
 
 ```
-drizzle/schema.ts            ← Drizzle schema for articles and categories tables
-src/lib/db/articles.ts       ← getArticles, getArticle, createArticle, updateArticle, deleteArticle
-src/lib/db/categories.ts     ← getCategories, getCategory, createCategory, updateCategory, deleteCategory
-wrangler.toml                ← [[d1_databases]] binding added (merged if file exists)
-drizzle.config.ts            ← drizzle-kit config (dialect: sqlite)
-.dev.vars.example            ← Cloudflare environment variable reference
+drizzle/schema.ts                            ← Drizzle schema for articles and categories tables
+src/lib/db/articles.ts                       ← getArticles, getArticlesByCategory, getArticlesByTag,
+                                               getArticle, parseArticle, createArticle, updateArticle, deleteArticle
+src/lib/db/categories.ts                     ← getCategories, getCategory, createCategory, updateCategory, deleteCategory
+wrangler.toml                                ← [[d1_databases]] binding added (merged if file exists)
+drizzle.config.ts                            ← drizzle-kit config (dialect: sqlite)
+.dev.vars.example                            ← Cloudflare environment variable reference
+```
+
+Optionally (prompted during setup), the existing `+page.server.ts` route files are replaced with D1-backed versions that read from `platform.env.DB` instead of the Cosmolo virtual module:
+
+```
+src/routes/+page.server.ts                   ← Home page — getArticles + getCategories from D1
+src/routes/articles/[slug]/+page.server.ts   ← Article — getArticle from D1, Markdown rendered with marked
+src/routes/categories/[slug]/+page.server.ts ← Category — getArticlesByCategory from D1
+src/routes/tags/[tag]/+page.server.ts        ← Tag — getArticlesByTag from D1 (json_each query)
 ```
 
 The command prints step-by-step instructions after generation:
@@ -335,6 +388,42 @@ self-hosted server:
 ```
 
 The upside: content edits take effect immediately — no rebuild or redeploy needed.
+
+---
+
+## R2 Asset Storage
+
+Add Cloudflare R2 object storage for article images and other binary assets:
+
+```bash
+bunx cosmolo setup:r2
+```
+
+The command asks for a bucket name and binding name, then generates:
+
+```
+src/lib/r2.ts                          ← getR2Asset(bucket, key) helper
+src/routes/assets/[...key]/+server.ts  ← Edge route — serves files directly from R2
+wrangler.toml                          ← [[r2_buckets]] binding appended
+```
+
+After setup:
+
+```bash
+# 1. Create the bucket
+bunx wrangler r2 bucket create <bucket-name>
+
+# 2. Upload an asset
+bunx wrangler r2 object put <bucket-name>/images/photo.jpg --file ./static/images/photo.jpg
+
+# 3. Reference it in templates as /assets/images/photo.jpg
+```
+
+Add the binding type to `src/app.d.ts` (one line):
+
+```ts
+interface Platform { env: { ASSETS: R2Bucket } }
+```
 
 ---
 
@@ -439,10 +528,11 @@ The command asks two questions:
 
 **Adapter**
 
-| Adapter | Effect |
+| Adapter | Generated files |
 |---|---|
-| **SSG** (`adapter-static`) | Also creates `src/routes/+layout.ts` with `export const prerender = true` |
-| **Serverless / SSR** | No layout file — routes render on demand |
+| **SSG** (`adapter-static`) | `svelte.config.js` (adapter-static) + `src/routes/+layout.ts` (`prerender = true`) |
+| **Cloudflare** (`adapter-cloudflare`) | `svelte.config.js` (adapter-cloudflare) + `wrangler.toml` + `src/app.d.ts` (`Platform` type). Optionally `.github/workflows/deploy.yml`. |
+| **Serverless** | No extra files — bring your own adapter (Vercel, Node, etc.) |
 
 If any target file already exists, the command lists every conflict and exits without
 writing anything.

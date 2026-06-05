@@ -55,11 +55,19 @@ function generateDrizzleSchema(): string {
 
 function generateArticlesCrud(): string {
 	return `import { drizzle } from 'drizzle-orm/d1';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { articles } from '../../drizzle/schema';
 
 export function createDb(d1: D1Database) {
   return drizzle(d1);
+}
+
+export function parseArticle<T extends { tags: string | null; related: string | null }>(row: T) {
+  return {
+    ...row,
+    tags: JSON.parse(row.tags ?? '[]') as string[],
+    related: JSON.parse(row.related ?? '[]') as string[],
+  };
 }
 
 export async function getArticles(d1: D1Database) {
@@ -67,6 +75,27 @@ export async function getArticles(d1: D1Database) {
     .select()
     .from(articles)
     .where(eq(articles.draft, 0))
+    .orderBy(desc(articles.sort));
+}
+
+export async function getArticlesByCategory(d1: D1Database, category: string) {
+  return createDb(d1)
+    .select()
+    .from(articles)
+    .where(and(eq(articles.draft, 0), eq(articles.category, category)))
+    .orderBy(desc(articles.sort));
+}
+
+export async function getArticlesByTag(d1: D1Database, tag: string) {
+  return createDb(d1)
+    .select()
+    .from(articles)
+    .where(
+      and(
+        eq(articles.draft, 0),
+        sql\`EXISTS (SELECT 1 FROM json_each(\${articles.tags}) WHERE value = \${tag})\`
+      )
+    )
     .orderBy(desc(articles.sort));
 }
 
@@ -129,6 +158,86 @@ export async function deleteCategory(d1: D1Database, key: string) {
 `;
 }
 
+// ─── Route file generation ────────────────────────────────────────────────────
+
+function generateHomeRoute(): string {
+	return `import type { PageServerLoad } from './$types';
+import { getArticles, parseArticle } from '$lib/db/articles';
+import { getCategories } from '$lib/db/categories';
+import siteConfig from '../../config/site.json';
+
+export const load: PageServerLoad = async ({ platform }) => {
+  const db = platform!.env.DB;
+  const [rawArticles, categories] = await Promise.all([getArticles(db), getCategories(db)]);
+  return {
+    articles: rawArticles.map(parseArticle),
+    categories,
+    articlesPerPage: siteConfig.articlesPerPage ?? 10,
+  };
+};
+`;
+}
+
+function generateArticleRoute(): string {
+	return `import type { PageServerLoad } from './$types';
+import { error } from '@sveltejs/kit';
+import { marked } from 'marked';
+import { getArticle, parseArticle } from '$lib/db/articles';
+import { getCategories } from '$lib/db/categories';
+
+export const load: PageServerLoad = async ({ params, platform }) => {
+  const db = platform!.env.DB;
+  const [raw, categories] = await Promise.all([getArticle(db, params.slug), getCategories(db)]);
+  if (!raw) error(404, 'Article not found');
+  const article = {
+    ...parseArticle(raw),
+    body: await marked(raw.body ?? ''),
+  };
+  return { article, categories };
+};
+`;
+}
+
+function generateCategoryRoute(): string {
+	return `import type { PageServerLoad } from './$types';
+import { error } from '@sveltejs/kit';
+import { getArticlesByCategory, parseArticle } from '$lib/db/articles';
+import { getCategory } from '$lib/db/categories';
+import siteConfig from '../../../../config/site.json';
+
+export const load: PageServerLoad = async ({ params, platform }) => {
+  const db = platform!.env.DB;
+  const [rawArticles, category] = await Promise.all([
+    getArticlesByCategory(db, params.slug),
+    getCategory(db, params.slug),
+  ]);
+  if (!category) error(404, 'Category not found');
+  return {
+    articles: rawArticles.map(parseArticle),
+    category,
+    articlesPerPage: siteConfig.articlesPerPage ?? 10,
+  };
+};
+`;
+}
+
+function generateTagRoute(): string {
+	return `import type { PageServerLoad } from './$types';
+import { getArticlesByTag, parseArticle } from '$lib/db/articles';
+import siteConfig from '../../../../config/site.json';
+
+export const load: PageServerLoad = async ({ params, platform }) => {
+  const db = platform!.env.DB;
+  const rawArticles = await getArticlesByTag(db, params.tag);
+  return {
+    articles: rawArticles.map(parseArticle),
+    tag: params.tag,
+    articlesPerPage: siteConfig.articlesPerPage ?? 10,
+  };
+};
+`;
+}
+
 function generateDrizzleConfig(): string {
 	return `import type { Config } from 'drizzle-kit';
 
@@ -178,7 +287,7 @@ function updateWranglerToml(root: string, dbName: string): 'created' | 'appended
 async function preflight(
 	root: string,
 	rl: readline.Interface
-): Promise<{ dbName: string } | null> {
+): Promise<{ dbName: string; generateRoutes: boolean } | null> {
 	console.log('\n  Checking environment...\n');
 
 	// drizzle-orm installed?
@@ -247,7 +356,24 @@ async function preflight(
 	// D1 database name
 	const dbName = await ask(rl, 'D1 database name', 'cosmolo');
 
-	return { dbName };
+	// Generate D1-backed routes?
+	const routePaths = [
+		path.join('src', 'routes', '+page.server.ts'),
+		path.join('src', 'routes', 'articles', '[slug]', '+page.server.ts'),
+		path.join('src', 'routes', 'categories', '[slug]', '+page.server.ts'),
+		path.join('src', 'routes', 'tags', '[tag]', '+page.server.ts'),
+	];
+	const existingRoutes = routePaths.filter((p) => fs.existsSync(path.join(root, p)));
+	let generateRoutes = true;
+	if (existingRoutes.length > 0) {
+		console.log(`\n  The following route files will be replaced with D1-backed versions:`);
+		for (const p of existingRoutes) console.log(`    ${p}`);
+		generateRoutes = await confirm(rl, 'Replace with D1-backed route files?');
+	} else {
+		generateRoutes = await confirm(rl, 'Generate D1-backed route files?');
+	}
+
+	return { dbName, generateRoutes };
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────────
@@ -260,7 +386,7 @@ export async function drizzleSetup(_config: ResolvedCosmoloConfig): Promise<void
 	rl.close();
 	if (!result) return;
 
-	const { dbName } = result;
+	const { dbName, generateRoutes } = result;
 
 	// Generate drizzle/schema.ts
 	const drizzleDir = path.join(root, 'drizzle');
@@ -284,6 +410,21 @@ export async function drizzleSetup(_config: ResolvedCosmoloConfig): Promise<void
 	// wrangler.toml
 	const wranglerAction = updateWranglerToml(root, dbName);
 
+	// D1-backed route files
+	if (generateRoutes) {
+		const routesDir = path.join(root, 'src', 'routes');
+		const routeFiles: Array<[string, string]> = [
+			[path.join(routesDir, '+page.server.ts'), generateHomeRoute()],
+			[path.join(routesDir, 'articles', '[slug]', '+page.server.ts'), generateArticleRoute()],
+			[path.join(routesDir, 'categories', '[slug]', '+page.server.ts'), generateCategoryRoute()],
+			[path.join(routesDir, 'tags', '[tag]', '+page.server.ts'), generateTagRoute()],
+		];
+		for (const [filePath, content] of routeFiles) {
+			fs.mkdirSync(path.dirname(filePath), { recursive: true });
+			fs.writeFileSync(filePath, content);
+		}
+	}
+
 	console.log('\n✓ Files generated:');
 	console.log('  drizzle/schema.ts');
 	console.log('  src/lib/db/articles.ts');
@@ -291,22 +432,34 @@ export async function drizzleSetup(_config: ResolvedCosmoloConfig): Promise<void
 	console.log('  drizzle.config.ts');
 	console.log('  .dev.vars.example');
 	console.log(`  wrangler.toml  (${wranglerAction})`);
+	if (generateRoutes) {
+		console.log('  src/routes/+page.server.ts');
+		console.log('  src/routes/articles/[slug]/+page.server.ts');
+		console.log('  src/routes/categories/[slug]/+page.server.ts');
+		console.log('  src/routes/tags/[tag]/+page.server.ts');
+	}
 
+	let step = 1;
 	console.log('\nNext steps:\n');
-	console.log(`  1. Create the D1 database (if not done yet):`);
+	console.log(`  ${step++}. Create the D1 database (if not done yet):`);
 	console.log(`       bunx wrangler d1 create ${dbName}`);
 	console.log(`     Copy the database_id into wrangler.toml.\n`);
-	console.log(`  2. Generate migration files:`);
+	console.log(`  ${step++}. Generate migration files:`);
 	console.log(`       bunx drizzle-kit generate\n`);
-	console.log(`  3. Apply migrations locally:`);
+	console.log(`  ${step++}. Apply migrations locally:`);
 	console.log(`       bunx wrangler d1 migrations apply ${dbName} --local\n`);
-	console.log(`  4. Seed content from Markdown files:`);
+	console.log(`  ${step++}. Seed content from Markdown files:`);
 	console.log(`       bunx cosmolo migrate:db  → choose Option 1 to export SQL`);
 	console.log(`       bunx wrangler d1 execute ${dbName} --local --file=cosmolo-migration/002_seed_categories.sql`);
 	console.log(`       bunx wrangler d1 execute ${dbName} --local --file=cosmolo-migration/003_seed_articles.sql\n`);
-	console.log(`  5. Install Cloudflare Workers types for TypeScript:`);
+	if (generateRoutes) {
+		console.log(`  ${step++}. Install marked for Markdown rendering in routes:`);
+		console.log(`       bun add marked\n`);
+	}
+	console.log(`  ${step++}. Install Cloudflare Workers types for TypeScript:`);
 	console.log(`       bun add -d @cloudflare/workers-types\n`);
-	console.log(`  6. Add D1Database to src/app.d.ts:`);
+	console.log(`  ${step++}. Ensure src/app.d.ts declares the DB binding:`);
 	console.log(`       interface Platform { env: { DB: D1Database } }`);
-	console.log(`\n  See docs/DB_MIGRATION.md for full details.`);
+	console.log(`       (cosmolo init --cloudflare does this automatically)\n`);
+	console.log(`  See docs/DB_MIGRATION.md for full details.`);
 }

@@ -16,7 +16,6 @@ mock.module('cosmolo:content', () => ({
 		twitterHandle: '@test',
 		fallbackCategoryLabel: 'Other',
 		articlesPerPage: 10,
-		ogImage: { mode: 'static' },
 	},
 }));
 

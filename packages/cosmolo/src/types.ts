@@ -60,5 +60,4 @@ export interface SiteConfig {
 	twitterHandle: string;
 	fallbackCategoryLabel: string;
 	articlesPerPage: number;
-	ogImage: { mode: 'static' | 'generated' };
 }
