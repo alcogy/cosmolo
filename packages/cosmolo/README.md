@@ -54,7 +54,7 @@ bun generate:article
 bun dev
 ```
 
-`cosmolo init` asks two questions — which mode (full UI or server-only) and which adapter (SSG or serverless) — then copies the appropriate route files into your project.
+`cosmolo init` asks two questions — which mode (Full or Slim) and which adapter (SSG, Cloudflare, or Serverless) — then copies the appropriate route files into your project.
 
 ---
 
@@ -480,7 +480,7 @@ bun add -D vite @sveltejs/kit
 **1. Create `cosmolo.config.ts`** in your project root
 
 ```typescript
-import { resolveConfig } from 'cosmolo';
+import { resolveConfig } from 'cosmolo/plugin';
 
 export default resolveConfig({
   articlesDir: 'src/content/articles',    // default

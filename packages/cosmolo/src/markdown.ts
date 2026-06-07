@@ -10,6 +10,10 @@ function slugifyHeading(text: string): string {
 		.replace(/\s+/g, '-');
 }
 
+function escapeAttr(val: string): string {
+	return val.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 marked.use({
 	extensions: [
 		{
@@ -24,7 +28,8 @@ marked.use({
 			},
 			renderer(token) {
 				const { videoId } = token as unknown as { videoId: string };
-				return `<div class="youtube-embed"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>\n`;
+				const safeId = videoId.replace(/[^a-zA-Z0-9_-]/g, '');
+				return `<div class="youtube-embed"><iframe src="https://www.youtube.com/embed/${safeId}" title="YouTube video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>\n`;
 			},
 		},
 	],
@@ -35,8 +40,8 @@ marked.use({
 		link({ href, title, text }: { href: string; title?: string | null; text: string }) {
 			const isExternal = /^https?:\/\//.test(href ?? '');
 			const rel = isExternal ? ' target="_blank" rel="noopener noreferrer"' : '';
-			const titleAttr = title ? ` title="${title}"` : '';
-			return `<a href="${href}"${titleAttr}${rel}>${text}</a>`;
+			const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
+			return `<a href="${escapeAttr(href ?? '')}"${titleAttr}${rel}>${text}</a>`;
 		},
 		heading({ text, depth }: { text: string; depth: number }) {
 			const id = slugifyHeading(text);
