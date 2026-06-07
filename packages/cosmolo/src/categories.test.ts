@@ -5,6 +5,7 @@ mock.module('cosmolo:content', () => ({
 	rawMdFiles: {},
 	svxModules: {},
 	rawPageFiles: {},
+	updatedAtMap: {},
 	categoriesData: {
 		tech: { label: 'Technology', description: 'Tech articles.' },
 		life: { label: 'Lifestyle', description: 'Life articles.' },

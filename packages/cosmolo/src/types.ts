@@ -39,6 +39,8 @@ export interface Article extends ArticleFrontmatter {
 	html: string;
 	markdown: string;
 	toc: TocEntry[];
+	/** Last git commit date (YYYY-MM-DD). Empty string when unavailable or in dev mode. */
+	updatedAt: string;
 }
 
 export interface Page {

@@ -113,7 +113,11 @@ export async function updateArticle(
   slug: string,
   data: Partial<typeof articles.$inferInsert>
 ) {
-  return createDb(d1).update(articles).set(data).where(eq(articles.slug, slug)).returning();
+  return createDb(d1)
+    .update(articles)
+    .set({ ...data, updated_at: new Date().toISOString().split('T')[0] })
+    .where(eq(articles.slug, slug))
+    .returning();
 }
 
 export async function deleteArticle(d1: D1Database, slug: string) {

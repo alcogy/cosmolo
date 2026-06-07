@@ -36,7 +36,7 @@ export function createArticleLoader(
 ) {
 	return async ({ params }: { params: { slug: string } }) => {
 		const article = await getArticle(config, params.slug);
-		const updatedAt = options.getUpdatedAt?.(params.slug) ?? '';
+		const updatedAt = options.getUpdatedAt?.(params.slug) ?? article.updatedAt;
 
 		let related: Article[];
 		if (article.related.length > 0) {

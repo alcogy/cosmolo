@@ -61,6 +61,11 @@ mock.module('cosmolo:content', () => ({
 		].join('\n'),
 	},
 	svxModules: {},
+	updatedAtMap: {
+		'hello': '2025-06-01',
+		'series-one': '2025-05-10',
+		'series-two': '2025-05-15',
+	},
 }));
 
 // Dynamic import so mock is in place before articles.ts resolves cosmolo:content

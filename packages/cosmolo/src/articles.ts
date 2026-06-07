@@ -3,7 +3,7 @@ import matter from 'gray-matter';
 import { renderMarkdown, generateToc } from './markdown.js';
 import { isKnownCategory } from './categories.js';
 import type { Article, ResolvedCosmoloConfig } from './types.js';
-import { rawMdFiles, svxModules } from 'cosmolo:content';
+import { rawMdFiles, svxModules, updatedAtMap } from 'cosmolo:content';
 
 export const articleFrontmatterSchema = z.object({
 	title: z.string(),
@@ -37,7 +37,7 @@ export function getArticles(config: ResolvedCosmoloConfig): Article[] {
 		const { data } = matter(raw);
 		const frontmatter = articleFrontmatterSchema.parse(data);
 		if (frontmatter.draft) continue;
-		articles.push({ ...frontmatter, slug, html: '', markdown: '', toc: [] });
+		articles.push({ ...frontmatter, slug, html: '', markdown: '', toc: [], updatedAt: updatedAtMap[slug] ?? '' });
 	}
 
 	for (const [filePath, mod] of Object.entries(svxModules)) {
@@ -46,7 +46,7 @@ export function getArticles(config: ResolvedCosmoloConfig): Article[] {
 			(mod as { metadata: Record<string, unknown> }).metadata
 		);
 		if (frontmatter.draft) continue;
-		articles.push({ ...frontmatter, slug, html: '', markdown: '', toc: [] });
+		articles.push({ ...frontmatter, slug, html: '', markdown: '', toc: [], updatedAt: updatedAtMap[slug] ?? '' });
 	}
 
 	return articles.sort((a, b) => b.sort - a.sort);
@@ -69,14 +69,14 @@ export async function getArticle(config: ResolvedCosmoloConfig, slug: string): P
 		const frontmatter = articleFrontmatterSchema.parse(data);
 		const html = await renderMarkdown(content);
 		const toc = generateToc(content);
-		return { ...frontmatter, slug, html, markdown: content, toc };
+		return { ...frontmatter, slug, html, markdown: content, toc, updatedAt: updatedAtMap[slug] ?? '' };
 	}
 
 	if (svxModules[svxPath] !== undefined) {
 		const frontmatter = articleFrontmatterSchema.parse(
 			(svxModules[svxPath] as { metadata: Record<string, unknown> }).metadata
 		);
-		return { ...frontmatter, slug, html: '', markdown: '', toc: [] };
+		return { ...frontmatter, slug, html: '', markdown: '', toc: [], updatedAt: updatedAtMap[slug] ?? '' };
 	}
 
 	throw new Error(`Article not found: ${slug}`);

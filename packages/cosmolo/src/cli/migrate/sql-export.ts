@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { execSync } from 'child_process';
 import matter from 'gray-matter';
 import {
 	ARTICLE_COLUMNS,
@@ -9,6 +10,18 @@ import {
 	toSqlLiteral,
 } from './schema.js';
 import type { ResolvedCosmoloConfig } from '../../types.js';
+
+function gitUpdatedAt(filePath: string): string {
+	try {
+		const result = execSync(
+			`git log -1 --format=%cI -- "${filePath}"`,
+			{ encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }
+		).trim();
+		return result ? result.split('T')[0] : '';
+	} catch {
+		return '';
+	}
+}
 
 type CategoryMap = Record<string, { label?: string; description?: string }>;
 
@@ -48,6 +61,8 @@ export function buildArticlesInserts(articlesDir: string): string[] {
 				? data.date.toISOString().split('T')[0]
 				: (data.date ?? '');
 
+		const updatedAt = gitUpdatedAt(filePath);
+
 		const values = [
 			toSqlLiteral(slug),
 			toSqlLiteral(data.title ?? ''),
@@ -61,10 +76,11 @@ export function buildArticlesInserts(articlesDir: string): string[] {
 			toSqlLiteral(data.draft ?? false),
 			toSqlLiteral(data.related ?? []),
 			toSqlLiteral(content),
+			toSqlLiteral(updatedAt),
 		].join(', ');
 
 		const cols =
-			'slug, title, category, excerpt, sort, date, tags, series, series_order, draft, related, body';
+			'slug, title, category, excerpt, sort, date, tags, series, series_order, draft, related, body, updated_at';
 		return `INSERT INTO articles (${cols}) VALUES (${values});`;
 	});
 }

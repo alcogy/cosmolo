@@ -6,7 +6,7 @@
 
 	const { data }: { data: PageData } = $props();
 
-	const perPage = data.articlesPerPage;
+	const perPage = $derived(data.articlesPerPage);
 
 	let query = $state('');
 	let currentPage = $state(1);

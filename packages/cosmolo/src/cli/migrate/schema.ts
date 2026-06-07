@@ -21,6 +21,7 @@ export const ARTICLE_COLUMNS: SqlColumn[] = [
 	{ name: 'draft', type: 'INTEGER', notNull: true, defaultValue: 0 },
 	{ name: 'related', type: 'TEXT', notNull: true, defaultValue: '[]' },
 	{ name: 'body', type: 'TEXT', notNull: true },
+	{ name: 'updated_at', type: 'TEXT', notNull: true, defaultValue: '' },
 ];
 
 export const CATEGORY_COLUMNS: SqlColumn[] = [

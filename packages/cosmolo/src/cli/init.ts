@@ -249,6 +249,7 @@ export async function main(): Promise<void> {
 		const projectName = readProjectName(PROJECT_ROOT);
 		const wranglerToml = [
 			`name = "${projectName}"`,
+			`pages_build_output_dir = ".svelte-kit/cloudflare"`,
 			`compatibility_date = "${new Date().toISOString().slice(0, 10)}"`,
 			`compatibility_flags = ["nodejs_compat"]`,
 			``,

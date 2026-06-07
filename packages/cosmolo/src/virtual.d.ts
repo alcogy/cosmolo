@@ -4,5 +4,7 @@ declare module 'cosmolo:content' {
 	const rawPageFiles: Record<string, string>;
 	const categoriesData: Record<string, { label: string; description: string }>;
 	const siteConfigData: import('./types.js').SiteConfig;
-	export { rawMdFiles, svxModules, rawPageFiles, categoriesData, siteConfigData };
+	/** slug → ISO date string (YYYY-MM-DD). Computed from git at build time; empty string in dev mode or when git is unavailable. */
+	const updatedAtMap: Record<string, string>;
+	export { rawMdFiles, svxModules, rawPageFiles, categoriesData, siteConfigData, updatedAtMap };
 }
