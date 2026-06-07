@@ -718,6 +718,26 @@ the `build/` directory to their global edge network.
 Go to your Pages project → **Custom domains** → add your domain. If your domain's DNS
 is managed on Cloudflare, the setup is automatic.
 
+### Cloudflare Pages (D1 / SSR)
+
+Sites using D1 or other Cloudflare bindings require `adapter-cloudflare` and are deployed
+via the CLI. `cosmolo init` (Cloudflare adapter) adds a `deploy` script to `package.json`
+automatically:
+
+```bash
+bun run deploy   # bun run build + wrangler pages deploy .svelte-kit/cloudflare
+```
+
+To deploy manually:
+
+```bash
+bun run build
+bunx wrangler pages deploy .svelte-kit/cloudflare
+```
+
+If you opted in to GitHub Actions during `cosmolo init`, pushing to `main` triggers the
+deploy automatically via `wrangler-action`.
+
 ### Vercel
 
 ```bash
@@ -738,13 +758,33 @@ Or connect via the Netlify dashboard. Build command: `bun run build`. Publish di
 
 ## Development Commands
 
+### SSG
+
 ```bash
 bun dev       # Start dev server at http://localhost:5173
-bun build     # Build output
-bun preview   # Preview the production build
+bun build     # Build static output to build/
+bun preview   # Preview the production build locally
 bun check     # TypeScript type-check
 bun lint      # Run Prettier + ESLint checks
 bun format    # Auto-format all files
+```
+
+### Cloudflare (D1)
+
+`bun dev` does not provide access to Cloudflare bindings (`platform.env.DB`). Build
+first, then serve through wrangler to get a fully functional local environment with D1:
+
+```bash
+bun run build                                          # Build to .svelte-kit/cloudflare/
+bunx wrangler@3 pages dev .svelte-kit/cloudflare      # Local dev server with D1 binding
+```
+
+> **Note:** wrangler 4.x has a known TUI crash on macOS. Use `wrangler@3` for local development.
+
+Deploy:
+
+```bash
+bun run deploy   # bun run build + wrangler pages deploy .svelte-kit/cloudflare
 ```
 
 ---

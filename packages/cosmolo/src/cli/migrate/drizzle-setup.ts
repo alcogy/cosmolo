@@ -195,9 +195,18 @@ export const load: PageServerLoad = async ({ params, platform }) => {
   if (!raw) error(404, 'Article not found');
   const article = {
     ...parseArticle(raw),
-    body: await marked(raw.body ?? ''),
+    html: await marked(raw.body ?? ''),
+    toc: [],
   };
-  return { article, categories };
+  return {
+    article,
+    categories,
+    updatedAt: raw.updated_at ?? '',
+    related: [],
+    seriesTotal: 0,
+    seriesPrev: null,
+    seriesNext: null,
+  };
 };
 `;
 }
@@ -218,7 +227,9 @@ export const load: PageServerLoad = async ({ params, platform }) => {
   if (!category) error(404, 'Category not found');
   return {
     articles: rawArticles.map(parseArticle),
-    category,
+    label: category.label,
+    description: category.description ?? '',
+    slug: params.slug,
     articlesPerPage: siteConfig.articlesPerPage ?? 10,
   };
 };

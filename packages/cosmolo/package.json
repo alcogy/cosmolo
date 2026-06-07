@@ -1,6 +1,6 @@
 {
 	"name": "cosmolo",
-	"version": "0.5.1",
+	"version": "0.5.2",
 	"type": "module",
 	"bin": {
 		"cosmolo": "dist/cli/index.js"
