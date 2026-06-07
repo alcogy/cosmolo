@@ -56,7 +56,7 @@ function generateDrizzleSchema(): string {
 function generateArticlesCrud(): string {
 	return `import { drizzle } from 'drizzle-orm/d1';
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { articles } from '../../drizzle/schema';
+import { articles } from '../../../drizzle/schema';
 
 export function createDb(d1: D1Database) {
   return drizzle(d1);
@@ -129,7 +129,7 @@ export async function deleteArticle(d1: D1Database, slug: string) {
 function generateCategoriesCrud(): string {
 	return `import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
-import { categories } from '../../drizzle/schema';
+import { categories } from '../../../drizzle/schema';
 
 export function createDb(d1: D1Database) {
   return drizzle(d1);
