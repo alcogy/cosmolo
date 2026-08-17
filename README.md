@@ -2,8 +2,6 @@
 
 A SvelteKit-native content management package — add Markdown-based blogging to any SvelteKit project in minutes.
 
-**Website:** https://cosmolo.alcogy.dev
-
 > **Name origin**: Short for *cosmologist* — a deliberate nod to Astro. Cosmolo occupies
 > a similar content-site niche but stays entirely within the SvelteKit ecosystem.
 
